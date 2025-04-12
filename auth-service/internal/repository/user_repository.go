@@ -1,0 +1,29 @@
+package repository
+
+import (
+	"auth-service/internal/models"
+	"context"
+
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type UserRepository struct {
+	collection *mongo.Collection
+}
+
+func NewUserRepository(db *mongo.Database) *UserRepository {
+	return &UserRepository{
+		collection: db.Collection("users"),
+	}
+}
+
+func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) error {
+	_, err := r.collection.InsertOne(ctx, user)
+	return err
+}
+
+func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	err := r.collection.FindOne(ctx, map[string]string{"email": email}).Decode(&user)
+	return &user, err
+}
