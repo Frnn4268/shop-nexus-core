@@ -1,54 +1,51 @@
 import pandas as pd
-from sklearn.decomposition import NMF
-import numpy as np
-from app.database.mongo import get_purchase_history_collection
+from sklearn.neighbors import NearestNeighbors
+from app.database import mongo_client
 
-class Recommender:
+class RecommendationEngine:
     def __init__(self):
-        self.model = NMF(n_components=10, init='random', random_state=42)
-        self.user_product_matrix = None
+        self.model = None
         self.product_ids = []
         
-    def update_model(self):
-        collection = get_purchase_history_collection()
-        data = list(collection.find())
-
-        if not data:
-            self.user_product_matrix = pd.DataFrame()
-            return
-
-        try:
-            df = pd.DataFrame(data).explode('product_ids')
-            if 'product_ids' not in df.columns:
-                raise KeyError("Campo 'product_ids' no encontrado en los datos")
-                
-            user_product = pd.crosstab(df['user_id'], df['product_ids'])
-
-        except KeyError as e:
-            print(f"Error en la estructura de datos: {str(e)}")
-            self.user_product_matrix = pd.DataFrame()
+    def train_model(self):
+        # Obtener datos históricos de pedidos
+        orders = list(mongo_client.db.orders.find({}, {
+            'user_id': 1,
+            'items.product_id': 1
+        }))
         
-    def recommend(self, user_id, n=5):
-        """Genera recomendaciones para un usuario"""
-        collection = get_purchase_history_collection()
-        user_data = collection.find_one({"user_id": user_id})
+        # Crear matriz usuario-producto
+        data = {}
+        for order in orders:
+            user = str(order['user_id'])
+            for item in order['items']:
+                product = str(item['product_id'])
+                data.setdefault(user, {})[product] = data.get(user, {}).get(product, 0) + 1
+                
+        df = pd.DataFrame.from_dict(data, orient='index').fillna(0)
+        self.product_ids = df.columns.tolist()
+        
+        # Entrenar modelo KNN
+        self.model = NearestNeighbors(n_neighbors=5, metric='cosine')
+        self.model.fit(df)
+        
+    def get_recommendations(self, user_id):
+        if not self.model:
+            return []
+            
+        # Obtener datos del usuario
+        user_data = mongo_client.db.orders.find_one(
+            {'user_id': user_id}, 
+            {'items.product_id': 1}
+        )
         
         if not user_data:
             return []
             
-        # Obtener factorización de matrices
-        W = self.model.transform(user_product)
-        H = self.model.components_
+        # Crear vector de usuario
+        user_vector = {str(item['product_id']): 1 for item in user_data['items']}
+        df_user = pd.DataFrame([user_vector], columns=self.product_ids).fillna(0)
         
-        # Predecir ratings
-        predicted = np.dot(W, H)
-        
-        # Obtener productos no comprados
-        user_products = set(user_data['product_ids'])
-        recommendations = []
-        
-        for idx, product in enumerate(self.product_ids):
-            if product not in user_products:
-                recommendations.append((product, predicted[user_idx][idx]))
-                
-        return [p[0] for p in sorted(recommendations, key=lambda x: -x[1])[:n]]
+        # Obtener recomendaciones
+        _, indices = self.model.kneighbors(df_user)
+        return [self.product_ids[i] for i in indices[0]]

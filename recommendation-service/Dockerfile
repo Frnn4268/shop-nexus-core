@@ -1,12 +1,13 @@
-FROM python:3.12-slim
+FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app
+# Establecer PYTHONPATH para incluir el directorio actual
+ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["python", "app/main.py"]

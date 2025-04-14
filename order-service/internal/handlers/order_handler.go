@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"order-service/internal/models"
 	"order-service/internal/payment"
 	"order-service/internal/repository"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/streadway/amqp"
 )
 
 type OrderHandler struct {
@@ -44,6 +48,38 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	if err := h.repo.CreateOrder(c.Request.Context(), &order); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating order"})
 		return
+	}
+
+	conn, err := amqp.Dial(os.Getenv("RABBITMQ_URI")) // Usar variable de entorno
+	if err != nil {
+		log.Printf("Error conectando a RabbitMQ: %v", err)
+	} else {
+		defer conn.Close()
+
+		ch, err := conn.Channel()
+		if err != nil {
+			log.Printf("Error abriendo canal: %v", err)
+		} else {
+			defer ch.Close()
+
+			body, _ := json.Marshal(order)
+			err = ch.Publish(
+				"",              // exchange
+				"order_created", // routing key
+				false,           // mandatory
+				false,           // immediate
+				amqp.Publishing{
+					ContentType: "application/json",
+					Body:        body,
+				},
+			)
+
+			if err != nil {
+				log.Printf("Error publicando mensaje: %v", err)
+			} else {
+				log.Println("Evento order_created publicado exitosamente")
+			}
+		}
 	}
 
 	c.JSON(http.StatusCreated, order)

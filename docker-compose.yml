@@ -38,11 +38,32 @@ services:
       - "8003:8003"
     environment:
       - MONGODB_URI=${MONGODB_URI}
+      - RABBITMQ_URI=${RABBITMQ_URI}
       - DB_NAME=${DB_NAME}
-      - RABBITMQ_HOST=rabbitmq
     depends_on:
       - mongo
       - rabbitmq
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8004:8004"
+    environment:
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    depends_on:
+      - rabbitmq
+    
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # Puerto AMQP
+      - "15672:15672" # Interfaz de gestión (opcional)
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo:
     image: mongo:latest
@@ -50,12 +71,6 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
-  
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
 
 volumes:
   mongo-data:
