@@ -55,6 +55,26 @@ func (r *ProductRepository) GetProductByID(ctx context.Context, id string) (*mod
 	return &product, err
 }
 
+// Métodos adicionales para Update y Delete
+func (r *ProductRepository) UpdateProduct(ctx context.Context, id primitive.ObjectID, product *models.Product) error {
+	update := bson.M{
+		"$set": bson.M{
+			"name":         product.Name,
+			"description":  product.Description,
+			"price":        product.Price,
+			"category_ids": product.CategoryIDs,
+		},
+	}
+
+	_, err := r.productsColl.UpdateByID(ctx, id, update)
+	return err
+}
+
+func (r *ProductRepository) DeleteProduct(ctx context.Context, id primitive.ObjectID) error {
+	_, err := r.productsColl.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
 // Operaciones CRUD para Categorías
 func (r *ProductRepository) CreateCategory(ctx context.Context, category *models.Category) error {
 	_, err := r.categoriesColl.InsertOne(ctx, category)

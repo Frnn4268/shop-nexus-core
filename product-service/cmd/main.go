@@ -15,7 +15,6 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 
-	// Conectar a MongoDB
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.MongoDBURI))
 	if err != nil {
 		log.Fatal(err)
@@ -25,18 +24,22 @@ func main() {
 	db := client.Database(cfg.DBName)
 	productRepo := repository.NewProductRepository(db)
 
-	// Configurar Gin
 	r := gin.Default()
 	productHandler := handlers.NewProductHandler(productRepo)
 
-	// Endpoints de Productos
-	r.GET("/products", productHandler.GetAllProducts)
-	r.POST("/products", productHandler.CreateProduct)
-	r.GET("/products/:id", productHandler.GetProductByID)
+	// Grupo de rutas protegidas
+	authRoutes := r.Group("/")
+	authRoutes.Use(handlers.AuthMiddleware(cfg.JWTSecret))
 
-	// Endpoints de Categorías
-	r.GET("/categories", productHandler.GetAllCategories)
-	r.POST("/categories", productHandler.CreateCategory)
+	// Productos
+	authRoutes.GET("/products", productHandler.GetAllProducts)
+	authRoutes.POST("/products", productHandler.CreateProduct)
+	authRoutes.PUT("/products/:id", productHandler.UpdateProduct)
+	authRoutes.DELETE("/products/:id", productHandler.DeleteProduct)
+
+	// Categorías
+	authRoutes.GET("/categories", productHandler.GetAllCategories)
+	authRoutes.POST("/categories", productHandler.CreateCategory)
 
 	r.Run(":" + cfg.Port)
 }

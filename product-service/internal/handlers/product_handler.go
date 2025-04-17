@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"product-service/internal/models"
 	"product-service/internal/repository"
+	"product-service/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -64,6 +65,42 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, product)
+}
+
+func (h *ProductHandler) UpdateProduct(c *gin.Context) {
+	id := c.Param("id")
+	objID, valid := utils.ValidateObjectID(c, id)
+	if !valid {
+		return
+	}
+
+	var updateData models.Product
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.repo.UpdateProduct(c.Request.Context(), objID, &updateData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating product"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Product updated"})
+}
+
+func (h *ProductHandler) DeleteProduct(c *gin.Context) {
+	id := c.Param("id")
+	objID, valid := utils.ValidateObjectID(c, id)
+	if !valid {
+		return
+	}
+
+	if err := h.repo.DeleteProduct(c.Request.Context(), objID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting product"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Product deleted"})
 }
 
 // POST /categories
