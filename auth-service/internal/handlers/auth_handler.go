@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -62,6 +63,31 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, _ := utils.GenerateJWT(user.Email, h.jwtSecret)
+	token, _ := utils.GenerateJWT(
+		user.ID.Hex(),
+		user.Email,
+		utils.RolesToStringSlice(user.Roles),
+		h.jwtSecret,
+	)
+
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+// GetUserByID: GET /users/:id
+func (h *AuthHandler) GetUserByID(c *gin.Context) {
+	userID := c.Param("id")
+
+	user, err := h.userRepo.FindUserByID(c.Request.Context(), userID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
+		return
+	}
+
+	// Omitir contraseña en la respuesta
+	user.Password = ""
+	c.JSON(http.StatusOK, user)
 }

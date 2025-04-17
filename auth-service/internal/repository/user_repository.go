@@ -4,6 +4,8 @@ import (
 	"auth-service/internal/models"
 	"context"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -25,5 +27,16 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) erro
 func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.collection.FindOne(ctx, map[string]string{"email": email}).Decode(&user)
+	return &user, err
+}
+
+func (r *UserRepository) FindUserByID(ctx context.Context, id string) (*models.User, error) {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var user models.User
+	err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
 	return &user, err
 }
