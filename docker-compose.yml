@@ -64,6 +64,7 @@ services:
     ports:
       - "8004:8004"
     environment:
+      - FLASK_APP=app.main:app
       - RABBITMQ_URI=${RABBITMQ_URI}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
     depends_on:
