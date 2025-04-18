@@ -1,6 +1,6 @@
 {
     "info": {
-      "name": "Shop Nexus Microservices",
+      "name": "Shop Nexus API Collection",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -81,6 +81,23 @@
             }
           },
           {
+            "name": "Get All Products",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/products",
+                "host": ["{{base_url}}"],
+                "path": ["products"]
+              }
+            }
+          },
+          {
             "name": "Get Products by Category",
             "request": {
               "method": "GET",
@@ -100,6 +117,32 @@
                     "value": "65f7b1f6243d164587a3d4a2"
                   }
                 ]
+              }
+            }
+          },
+          {
+            "name": "Create Category (Admin)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"Electrónicos\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/categories",
+                "host": ["{{base_url}}"],
+                "path": ["categories"]
               }
             }
           }
@@ -135,7 +178,7 @@
             }
           },
           {
-            "name": "Get Order by ID",
+            "name": "Get All Orders",
             "request": {
               "method": "GET",
               "header": [
@@ -145,9 +188,9 @@
                 }
               ],
               "url": {
-                "raw": "{{base_url}}/orders/65f7b5d6243d164587a3d4a4",
+                "raw": "{{base_url}}/orders",
                 "host": ["{{base_url}}"],
-                "path": ["orders", "65f7b5d6243d164587a3d4a4"]
+                "path": ["orders"]
               }
             }
           }
@@ -163,7 +206,7 @@
               "header": [
                 {
                   "key": "X-API-Key",
-                  "value": "clave_maestra"
+                  "value": "{{api_key}}"
                 }
               ],
               "url": {
@@ -180,12 +223,17 @@
       {
         "key": "base_url",
         "value": "http://localhost:8000",
-        "description": "Cambiar puerto según el servicio: 8000 (auth), 8001 (products), etc."
+        "type": "string"
       },
       {
         "key": "jwt_token",
-        "value": "TU_TOKEN_AQUI",
-        "description": "Obtener del endpoint /auth/login"
+        "value": "TU_TOKEN_JWT_AQUI",
+        "type": "string"
+      },
+      {
+        "key": "api_key",
+        "value": "clave_maestra",
+        "type": "string"
       }
     ]
   }

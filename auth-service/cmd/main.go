@@ -4,7 +4,7 @@ import (
 	"auth-service/internal/config"
 	"auth-service/internal/handlers"
 	"auth-service/internal/repository"
-	"auth-service/pkg/middleware" // Importar tu middleware
+	"auth-service/pkg/middleware"
 	"context"
 	"log"
 	"time"

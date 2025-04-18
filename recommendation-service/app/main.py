@@ -1,8 +1,7 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from app.models.recommender import RecommendationEngine
 from app.handlers.recommendation_handler import start_consumer
 from threading import Thread
-import requests as request
 import os
 
 app = Flask(__name__)
@@ -23,7 +22,7 @@ def get_recommendations(user_id):
 
 @app.before_request
 def check_auth():
-    if request.endpoint == 'get_recommendations':
+    if request.endpoint == get_recommendations.__name__:  # Usar __name__ para evitar errores
         api_key = request.headers.get("X-API-Key")
         if api_key not in API_KEYS:
             return jsonify({"error": "Unauthorized"}), 401
