@@ -4,15 +4,15 @@ import os
 
 celery = Celery(
     'tasks',
-    broker=os.getenv("CELERY_BROKER_URL"),
+    broker=os.getenv("RABBITMQ_URI"),  # Unificado con RABBITMQ_URI
     backend=os.getenv("CELERY_RESULT_BACKEND"),
-    broker_connection_retry_on_startup=True,  
+    broker_connection_retry_on_startup=True,
     broker_connection_max_retries=10
 )
 
 @celery.task
 def send_email(email: str, message: str):
-    # Simular envío de email
+    print(f"🔥 Iniciando envío de email a {email}")  # Log de depuración
     time.sleep(3)
     print(f"📧 Email enviado a {email}: {message}")
     return True

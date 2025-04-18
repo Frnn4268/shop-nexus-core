@@ -25,11 +25,17 @@ def start_consumer():
                 print("❌ Error: No se pudo conectar a RabbitMQ")
                 return
 
-    # Configurar canal y cola
     channel = connection.channel()
-    channel.queue_declare(
+    channel.exchange_declare(
+        exchange='order_events',
+        exchange_type='direct',
+        durable=True
+    )
+    channel.queue_declare(queue='order_created', durable=True)
+    channel.queue_bind(
         queue='order_created',
-        durable=True  # ✔️ Cola persistente
+        exchange='order_events',
+        routing_key='order_created'  # Asegúrate que order-service use este routing key
     )
 
     # Función de callback
