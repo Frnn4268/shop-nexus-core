@@ -1,0 +1,191 @@
+{
+    "info": {
+      "name": "Shop Nexus Microservices",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Auth Service",
+        "item": [
+          {
+            "name": "Register User",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"secret123\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/register",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "register"]
+              }
+            }
+          },
+          {
+            "name": "Login User",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"email\": \"john@example.com\",\n    \"password\": \"secret123\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Product Service",
+        "item": [
+          {
+            "name": "Create Product (Admin)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"Laptop Gamer\",\n    \"description\": \"RTX 4080, 32GB RAM\",\n    \"price\": 1500.99,\n    \"category_ids\": [\"65f7b1f6243d164587a3d4a2\"]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/products",
+                "host": ["{{base_url}}"],
+                "path": ["products"]
+              }
+            }
+          },
+          {
+            "name": "Get Products by Category",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/products?category=65f7b1f6243d164587a3d4a2",
+                "host": ["{{base_url}}"],
+                "path": ["products"],
+                "query": [
+                  {
+                    "key": "category",
+                    "value": "65f7b1f6243d164587a3d4a2"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Order Service",
+        "item": [
+          {
+            "name": "Create Order",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"items\": [\n        {\n            \"product_id\": \"65f7b3d6243d164587a3d4a3\",\n            \"quantity\": 2,\n            \"price\": 99.99\n        }\n    ]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/orders",
+                "host": ["{{base_url}}"],
+                "path": ["orders"]
+              }
+            }
+          },
+          {
+            "name": "Get Order by ID",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/orders/65f7b5d6243d164587a3d4a4",
+                "host": ["{{base_url}}"],
+                "path": ["orders", "65f7b5d6243d164587a3d4a4"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Recommendation Service",
+        "item": [
+          {
+            "name": "Get Recommendations",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "X-API-Key",
+                  "value": "clave_maestra"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/recommendations/507f1f77bcf86cd799439011",
+                "host": ["{{base_url}}"],
+                "path": ["recommendations", "507f1f77bcf86cd799439011"]
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8000",
+        "description": "Cambiar puerto según el servicio: 8000 (auth), 8001 (products), etc."
+      },
+      {
+        "key": "jwt_token",
+        "value": "TU_TOKEN_AQUI",
+        "description": "Obtener del endpoint /auth/login"
+      }
+    ]
+  }
