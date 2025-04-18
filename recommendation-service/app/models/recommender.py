@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+from datetime import datetime
 from app.database import mongo_client
 
 class RecommendationEngine:
@@ -8,30 +9,27 @@ class RecommendationEngine:
         self.product_ids = []
         
     def train_model(self):
-        # Obtener datos históricos de pedidos
-        orders = list(mongo_client.db.orders.find({}, {
-            'user_id': 1,
-            'items.product_id': 1
-        }))
-        
-        # Crear matriz usuario-producto
-        data = {}
+        # Obtener solo pedidos nuevos desde la última actualización
+        last_update = self.last_updated or datetime.min
+        orders = list(mongo_client.db.orders.find(
+            {"created_at": {"$gt": last_update}},
+            {'user_id': 1, 'items.product_id': 1}
+        ))
+
+        # Actualizar la matriz usuario-producto incrementalmente
         for order in orders:
             user = str(order['user_id'])
             for item in order['items']:
                 product = str(item['product_id'])
-                data.setdefault(user, {})[product] = data.get(user, {}).get(product, 0) + 1
-                
-        df = pd.DataFrame.from_dict(data, orient='index').fillna(0)
-        self.product_ids = df.columns.tolist()
-        
-        # Entrenar modelo KNN
-        self.model = NearestNeighbors(n_neighbors=5, metric='cosine')
+                self.user_product_matrix[user][product] += 1
+
+        df = pd.DataFrame.from_dict(self.user_product_matrix, orient='index').fillna(0)
         self.model.fit(df)
+        self.last_updated = datetime.now()
         
     def get_recommendations(self, user_id):
         if not self.model:
-            return []
+            return self.get_popular_products()
             
         # Obtener datos del usuario
         user_data = mongo_client.db.orders.find_one(
@@ -40,7 +38,7 @@ class RecommendationEngine:
         )
         
         if not user_data:
-            return []
+            return self.get_popular_products()
             
         # Crear vector de usuario
         user_vector = {str(item['product_id']): 1 for item in user_data['items']}
@@ -49,3 +47,13 @@ class RecommendationEngine:
         # Obtener recomendaciones
         _, indices = self.model.kneighbors(df_user)
         return [self.product_ids[i] for i in indices[0]]
+
+    def get_popular_products(self, n=5):
+        pipeline = [
+            {"$unwind": "$items"},
+            {"$group": {"_id": "$items.product_id", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": n}
+        ]
+        results = mongo_client.db.orders.aggregate(pipeline)
+        return [str(item["_id"]) for item in results]
