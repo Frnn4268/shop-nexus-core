@@ -26,21 +26,19 @@ func main() {
 	productRepo := repository.NewProductRepository(db)
 
 	r := gin.Default()
+	r.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+
 	productHandler := handlers.NewProductHandler(productRepo)
 
-	// Grupo de rutas protegidas
-	authRoutes := r.Group("/")
-	authRoutes.Use(middleware.AuthMiddleware(cfg.JWTSecret))
-
 	// Productos
-	authRoutes.GET("/products", productHandler.GetAllProducts)
-	authRoutes.POST("/products", productHandler.CreateProduct)
-	authRoutes.PUT("/products/:id", productHandler.UpdateProduct)
-	authRoutes.DELETE("/products/:id", productHandler.DeleteProduct)
+	r.GET("/products", productHandler.GetAllProducts)
+	r.POST("/products", productHandler.CreateProduct)
+	r.PUT("/products/:id", productHandler.UpdateProduct)
+	r.DELETE("/products/:id", productHandler.DeleteProduct)
 
 	// Categorías
-	authRoutes.GET("/categories", productHandler.GetAllCategories)
-	authRoutes.POST("/categories", productHandler.CreateCategory)
+	r.GET("/categories", productHandler.GetAllCategories)
+	r.POST("/categories", productHandler.CreateCategory)
 
 	r.Run(":" + cfg.Port)
 }

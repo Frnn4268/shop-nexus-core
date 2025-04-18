@@ -26,8 +26,6 @@ func main() {
 	orderRepo := repository.NewOrderRepository(db)
 
 	r := gin.Default()
-
-	// Middleware de autenticación global para todas las rutas
 	r.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 
 	orderHandler := handlers.NewOrderHandler(orderRepo)
