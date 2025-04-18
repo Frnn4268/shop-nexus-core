@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"log"
 	"math/rand"
 	"time"
 
@@ -15,9 +16,11 @@ type PaymentResponse struct {
 // Simula una pasarela de pago (ej: Stripe)
 func ProcessPayment(amount float64) PaymentResponse {
 	rand.Seed(time.Now().UnixNano())
-
-	// Simular éxito en el 80% de los casos
 	success := rand.Float32() < 0.8
+
+	if !success {
+		log.Println("⚠️ Pago fallido (simulado)")
+	}
 
 	return PaymentResponse{
 		Success:   success,

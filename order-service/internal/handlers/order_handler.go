@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"github.com/streadway/amqp"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type OrderHandler struct {
@@ -30,6 +32,25 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	claims, exists := c.Get("claims")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	claimsMap, ok := claims.(jwt.MapClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid token claims"})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(claimsMap["user_id"].(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID in token"})
+		return
+	}
+	order.UserID = userID // Asignar al pedido
 
 	// Calcular total
 	var total float64
@@ -68,7 +89,6 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 
 	// Intentar conexión con reintentos
 	var conn *amqp.Connection
-	var err error
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
 		conn, err = amqp.Dial(rabbitmqURI)

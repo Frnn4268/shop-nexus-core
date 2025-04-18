@@ -6,6 +6,7 @@ import (
 	"product-service/internal/config"
 	"product-service/internal/handlers"
 	"product-service/internal/repository"
+	middleware "product-service/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,7 +30,7 @@ func main() {
 
 	// Grupo de rutas protegidas
 	authRoutes := r.Group("/")
-	authRoutes.Use(handlers.AuthMiddleware(cfg.JWTSecret))
+	authRoutes.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 
 	// Productos
 	authRoutes.GET("/products", productHandler.GetAllProducts)

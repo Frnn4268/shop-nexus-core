@@ -15,9 +15,9 @@ const (
 )
 
 type OrderItem struct {
-	ProductID primitive.ObjectID `bson:"product_id"`
-	Quantity  int                `bson:"quantity"`
-	Price     float64            `bson:"price"`
+	ProductID string  `bson:"product_id" json:"product_id"`
+	Quantity  int     `bson:"quantity"`
+	Price     float64 `bson:"price"`
 }
 
 type Order struct {
