@@ -14,7 +14,7 @@
               "header": [],
               "body": {
                 "mode": "raw",
-                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"secret123\"\n}",
+                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone_number\": \"+1234567890\",\n    \"password\": \"secret123\",\n    \"roles\": [\"admin\"]\n}",
                 "options": {
                   "raw": {
                     "language": "json"

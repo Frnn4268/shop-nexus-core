@@ -16,28 +16,71 @@ type AuthHandler struct {
 	jwtSecret string
 }
 
+type CreateUserRequest struct {
+	Name        string   `json:"name"`
+	Email       string   `json:"email"`
+	Password    string   `json:"password"`
+	PhoneNumber string   `json:"phone_number"`
+	Roles       []string `json:"roles"`
+}
+
+// Nueva función auxiliar en auth_handler.go
+func stringToRoles(roles []string) []models.Role {
+	result := make([]models.Role, len(roles))
+	for i, role := range roles {
+		result[i] = models.Role(role)
+	}
+	return result
+}
+
 func NewAuthHandler(userRepo *repository.UserRepository, jwtSecret string) *AuthHandler {
 	return &AuthHandler{userRepo: userRepo, jwtSecret: jwtSecret}
 }
 
 // Register: POST /auth/register
 func (h *AuthHandler) Register(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	user.Password = string(hashedPassword)
-	user.Roles = []models.Role{models.RoleUser}
+	// Validar roles
+	validRoles := map[string]bool{"user": true, "admin": true}
+	for _, role := range req.Roles {
+		if !validRoles[role] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role: " + role})
+			return
+		}
+	}
+
+	if len(req.Roles) == 0 {
+		req.Roles = []string{"user"}
+	}
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+
+	user := models.User{
+		Name:        req.Name,
+		Email:       req.Email,
+		Password:    string(hashedPassword),
+		PhoneNumber: req.PhoneNumber,
+		Roles:       stringToRoles(req.Roles),
+	}
 
 	if err := h.userRepo.CreateUser(c.Request.Context(), &user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating user"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, user)
+	// Respuesta con ID convertido
+	c.JSON(http.StatusCreated, gin.H{
+		"id":           user.ID.Hex(),
+		"name":         user.Name,
+		"email":        user.Email,
+		"phone_number": user.PhoneNumber,
+		"roles":        user.Roles,
+	})
 }
 
 // Login: POST /auth/login
@@ -87,7 +130,13 @@ func (h *AuthHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	// Omitir contraseña en la respuesta
-	user.Password = ""
-	c.JSON(http.StatusOK, user)
+	response := gin.H{
+		"id":           user.ID.Hex(),
+		"name":         user.Name,
+		"email":        user.Email,
+		"phone_number": user.PhoneNumber,
+		"roles":        user.Roles,
+	}
+
+	c.JSON(http.StatusOK, response)
 }

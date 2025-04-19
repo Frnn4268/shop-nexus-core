@@ -4,8 +4,6 @@ import (
 	"auth-service/internal/models"
 	"time"
 
-	"auth-service/pkg/middleware"
-
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -17,8 +15,9 @@ type CustomClaims struct {
 }
 
 func GenerateJWT(userID, email string, roles []string, secret string) (string, error) {
-	claims := middleware.CustomClaims{ // Usa la estructura del middleware
+	claims := models.JWTClaims{
 		UserID: userID,
+		Email:  email,
 		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
