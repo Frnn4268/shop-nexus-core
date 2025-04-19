@@ -64,7 +64,8 @@ services:
     ports:
       - "8004:8004"
     environment:
-      - RABBITMQ_URI=${RABBITMQ_URI}  # Eliminar CELERY_BROKER_URL
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
     depends_on:
       rabbitmq:
         condition: service_healthy

@@ -16,4 +16,4 @@ USER appuser
 
 COPY . .
 
-CMD ["sh", "-c", "celery -A app.tasks.notifications worker --loglevel=info -Q order_created & flask run --host=0.0.0.0 --port=8004"]
+CMD ["sh", "-c", "celery -A app.tasks.notifications worker --loglevel=info & flask run --host=0.0.0.0 --port=8004"]

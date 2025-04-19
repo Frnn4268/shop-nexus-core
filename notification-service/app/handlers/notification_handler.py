@@ -27,7 +27,7 @@ def start_consumer():
 
     channel = connection.channel()
     channel.exchange_declare(
-        exchange='order_events',
+        exchange='order_created',  
         exchange_type='direct',
         durable=True
     )
@@ -42,19 +42,23 @@ def start_consumer():
     def callback(ch, method, properties, body):
         try:
             order_data = json.loads(body)
-            print(f"📦 Evento recibido: Pedido {order_data.get('id')}")
+            print(f"[DEBUG] Mensaje recibido: {order_data}")  # Log completo
             
-            # Simular datos de usuario (deberías obtenerlos de una DB)
             user_email = "user@example.com"
             user_phone = "+1234567890"
             
-            # Enviar notificaciones asíncronas
-            send_email.delay(user_email, f"Pedido {order_data['id']} confirmado!")
-            send_sms.delay(user_phone, f"Gracias por tu pedido de ${order_data['total']}")
+            # Verifica campos obligatorios
+            if 'ID' not in order_data or 'Total' not in order_data:
+                raise KeyError("Campos faltantes en el mensaje")
+            
+            send_email.delay(user_email, f"Pedido {order_data['ID']} confirmado!")
+            send_sms.delay(user_phone, f"Gracias por tu pedido de ${order_data['Total']}")
             print("✅ Notificaciones encoladas")
 
+        except KeyError as e:
+            print(f"❌ Error en los datos: {str(e)}")
         except Exception as e:
-            print(f"⚠️ Error procesando mensaje: {str(e)}")
+            print(f"⚠️ Error inesperado: {str(e)}")
 
     # Configurar consumidor
     channel.basic_consume(

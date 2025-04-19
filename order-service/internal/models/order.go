@@ -22,7 +22,7 @@ type OrderItem struct {
 
 type Order struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	UserID    primitive.ObjectID `bson:"user_id"`
+	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
 	Items     []OrderItem        `bson:"items"`
 	Total     float64            `bson:"total"`
 	Status    OrderStatus        `bson:"status"`

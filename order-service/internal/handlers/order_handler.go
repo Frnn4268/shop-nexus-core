@@ -131,7 +131,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 
 	body, _ := json.Marshal(order)
 	err = ch.Publish(
-		"",              // exchange
+		"order_created", // exchange
 		"order_created", // routing key
 		false,           // mandatory
 		false,           // immediate
