@@ -25,14 +25,25 @@ func NewProductRepository(db *mongo.Database) *ProductRepository {
 // Operaciones CRUD para Productos
 func (r *ProductRepository) CreateProduct(ctx context.Context, product *models.Product) error {
 	product.CreatedAt = time.Now()
-	_, err := r.productsColl.InsertOne(ctx, product)
-	return err
+	result, err := r.productsColl.InsertOne(ctx, product)
+	if err != nil {
+		return err
+	}
+
+	// Asignar el ID generado
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		product.ID = oid
+	}
+	return nil
 }
 
 func (r *ProductRepository) GetAllProducts(ctx context.Context, categoryID string) ([]models.Product, error) {
 	filter := bson.M{}
 	if categoryID != "" {
-		objID, _ := primitive.ObjectIDFromHex(categoryID)
+		objID, err := primitive.ObjectIDFromHex(categoryID)
+		if err != nil {
+			return nil, err
+		}
 		filter["category_ids"] = objID
 	}
 
@@ -71,14 +82,35 @@ func (r *ProductRepository) UpdateProduct(ctx context.Context, id primitive.Obje
 }
 
 func (r *ProductRepository) DeleteProduct(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.productsColl.DeleteOne(ctx, bson.M{"_id": id})
-	return err
+	result, err := r.productsColl.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return err
+	}
+
+	return nil
 }
 
 // Operaciones CRUD para Categorías
+func (r *ProductRepository) CategoryExists(ctx context.Context, id primitive.ObjectID) (bool, error) {
+	count, err := r.categoriesColl.CountDocuments(ctx, bson.M{"_id": id})
+	return count > 0, err
+}
+
 func (r *ProductRepository) CreateCategory(ctx context.Context, category *models.Category) error {
-	_, err := r.categoriesColl.InsertOne(ctx, category)
-	return err
+	result, err := r.categoriesColl.InsertOne(ctx, category)
+	if err != nil {
+		return err
+	}
+
+	// Asignar el ID generado
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		category.ID = oid
+	}
+	return nil
 }
 
 func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]models.Category, error) {
