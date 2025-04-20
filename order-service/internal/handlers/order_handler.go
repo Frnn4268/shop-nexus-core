@@ -18,19 +18,11 @@ import (
 )
 
 type OrderHandler struct {
-	repo        *repository.OrderRepository
-	productRepo *repository.ProductRepository // Nuevo campo
+	repo *repository.OrderRepository
 }
 
-// Actualizar constructor
-func NewOrderHandler(
-	repo *repository.OrderRepository,
-	productRepo *repository.ProductRepository,
-) *OrderHandler {
-	return &OrderHandler{
-		repo:        repo,
-		productRepo: productRepo,
-	}
+func NewOrderHandler(repo *repository.OrderRepository) *OrderHandler {
+	return &OrderHandler{repo: repo}
 }
 
 // POST /orders
@@ -59,21 +51,6 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 	order.UserID = userID // Asignar al pedido
-
-	// Validar productos
-	for _, item := range order.Items {
-		exists, err := h.productRepo.ProductExists(c.Request.Context(), item.ProductID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error verificando producto"})
-			return
-		}
-		if !exists {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Producto no existe: " + item.ProductID,
-			})
-			return
-		}
-	}
 
 	// Calcular total
 	var total float64

@@ -10,7 +10,7 @@ class RecommendationEngine:
         self.user_product_matrix = defaultdict(lambda: defaultdict(int))
         self.product_ids = []
         self.last_updated = None
-
+        
         # Cargar datos iniciales
         self.load_initial_data()
     

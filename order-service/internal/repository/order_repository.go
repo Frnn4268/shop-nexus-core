@@ -23,17 +23,8 @@ func NewOrderRepository(db *mongo.Database) *OrderRepository {
 func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) error {
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
-
-	result, err := r.collection.InsertOne(ctx, order)
-	if err != nil {
-		return err
-	}
-
-	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
-		order.ID = oid
-	}
-
-	return nil
+	_, err := r.collection.InsertOne(ctx, order)
+	return err
 }
 
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id string) (*models.Order, error) {
