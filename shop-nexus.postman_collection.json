@@ -236,6 +236,23 @@
                 "path": ["orders"]
               }
             }
+          },
+          {
+            "name": "Get Order by ID",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/orders/{{order_id}}",
+                "host": ["{{base_url}}"],
+                "path": ["orders", "{{order_id}}"]
+              }
+            }
           }
         ]
       },
