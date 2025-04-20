@@ -3,6 +3,7 @@ package repository
 import (
 	"auth-service/internal/models"
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,8 +21,18 @@ func NewUserRepository(db *mongo.Database) *UserRepository {
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) error {
-	_, err := r.collection.InsertOne(ctx, user)
-	return err
+	result, err := r.collection.InsertOne(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		user.ID = oid
+	} else {
+		return errors.New("unsupported value type for InsertedID")
+	}
+
+	return nil
 }
 
 func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
