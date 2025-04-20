@@ -1,12 +1,32 @@
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+from collections import defaultdict
 from datetime import datetime
 from app.database import mongo_client
 
 class RecommendationEngine:
     def __init__(self):
-        self.model = None
+        self.model = NearestNeighbors(n_neighbors=5, metric='cosine')
+        self.user_product_matrix = defaultdict(lambda: defaultdict(int))
         self.product_ids = []
+        self.last_updated = None
+
+        # Cargar datos iniciales
+        self.load_initial_data()
+    
+    def load_initial_data(self):
+        # Obtener todos los productos existentes
+        pipeline = [{"$group": {"_id": "$items.product_id"}}]
+        results = mongo_client.db.orders.aggregate(pipeline)
+        self.product_ids = [str(item["_id"]) for item in results]
+        
+        # Inicializar matriz con datos históricos
+        orders = mongo_client.db.orders.find()
+        for order in orders:
+            user = str(order['user_id'])
+            for item in order['items']:
+                product = str(item['product_id'])
+                self.user_product_matrix[user][product] += 1
         
     def train_model(self):
         # Obtener solo pedidos nuevos desde la última actualización
