@@ -4,10 +4,12 @@ import (
 	"auth-service/internal/models"
 	"context"
 	"errors"
+	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type UserRepository struct {
@@ -15,9 +17,18 @@ type UserRepository struct {
 }
 
 func NewUserRepository(db *mongo.Database) *UserRepository {
-	return &UserRepository{
-		collection: db.Collection("users"),
+	collection := db.Collection("users")
+
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true),
 	}
+	_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		log.Printf("Error creando índice único en email: %v", err)
+	}
+
+	return &UserRepository{collection: collection}
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) error {
@@ -37,8 +48,14 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) erro
 
 func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	err := r.collection.FindOne(ctx, map[string]string{"email": email}).Decode(&user)
-	return &user, err
+	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil // Usuario no encontrado
+		}
+		return nil, err // Otro error
+	}
+	return &user, nil
 }
 
 func (r *UserRepository) FindUserByID(ctx context.Context, id string) (*models.User, error) {

@@ -58,6 +58,17 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		req.Roles = []string{"user"}
 	}
 
+	// Verificar si el email ya existe
+	existingUser, err := h.userRepo.FindUserByEmail(c.Request.Context(), req.Email)
+	if err != nil && err != mongo.ErrNoDocuments {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error verificando el email"})
+		return
+	}
+	if existingUser != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "El correo ya está registrado"})
+		return
+	}
+
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
 	user := models.User{
@@ -68,12 +79,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Roles:       stringToRoles(req.Roles),
 	}
 
+	// Manejar error de duplicado en inserción
 	if err := h.userRepo.CreateUser(c.Request.Context(), &user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating user"})
+		if isDuplicateKeyError(err) {
+			c.JSON(http.StatusConflict, gin.H{"error": "El correo ya está registrado"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creando usuario"})
 		return
 	}
 
-	// Respuesta con ID convertido
 	c.JSON(http.StatusCreated, gin.H{
 		"id":           user.ID.Hex(),
 		"name":         user.Name,
@@ -81,6 +96,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		"phone_number": user.PhoneNumber,
 		"roles":        user.Roles,
 	})
+}
+
+// Función auxiliar para detectar error de duplicado
+func isDuplicateKeyError(err error) bool {
+	if we, ok := err.(mongo.WriteException); ok {
+		for _, e := range we.WriteErrors {
+			if e.Code == 11000 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Login: POST /auth/login
