@@ -25,6 +25,7 @@ func NewProductRepository(db *mongo.Database) *ProductRepository {
 // Operaciones CRUD para Productos
 func (r *ProductRepository) CreateProduct(ctx context.Context, product *models.Product) error {
 	product.CreatedAt = time.Now()
+
 	result, err := r.productsColl.InsertOne(ctx, product)
 	if err != nil {
 		return err

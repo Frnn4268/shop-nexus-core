@@ -24,11 +24,12 @@ func main() {
 
 	db := client.Database(cfg.DBName)
 	orderRepo := repository.NewOrderRepository(db)
+	productRepo := repository.NewProductRepository(db)
 
 	r := gin.Default()
 	r.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 
-	orderHandler := handlers.NewOrderHandler(orderRepo)
+	orderHandler := handlers.NewOrderHandler(orderRepo, productRepo)
 
 	// Endpoints protegidos
 	r.POST("/orders", orderHandler.CreateOrder)
