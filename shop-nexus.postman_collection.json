@@ -55,7 +55,7 @@
         "name": "Product Service",
         "item": [
           {
-            "name": "Create Product (Admin)",
+            "name": "Create Product",
             "request": {
               "method": "POST",
               "header": [
@@ -98,6 +98,49 @@
             }
           },
           {
+            "name": "Update Product",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"Laptop Gamer Actualizada\",\n    \"description\": \"RTX 4090, 64GB RAM\",\n    \"price\": 2500.99,\n    \"category_ids\": [\"65f7b1f6243d164587a3d4a2\"]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{base_url}}/products/{{product_id}}",
+                "host": ["{{base_url}}"],
+                "path": ["products", "{{product_id}}"]
+              }
+            }
+          },
+          {
+            "name": "Delete Product",
+            "request": {
+              "method": "DELETE",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/products/{{product_id}}",
+                "host": ["{{base_url}}"],
+                "path": ["products", "{{product_id}}"]
+              }
+            }
+          },
+          {
             "name": "Get Products by Category",
             "request": {
               "method": "GET",
@@ -121,7 +164,7 @@
             }
           },
           {
-            "name": "Create Category (Admin)",
+            "name": "Create Category",
             "request": {
               "method": "POST",
               "header": [
