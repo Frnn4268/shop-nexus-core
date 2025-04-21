@@ -12,7 +12,6 @@ type Config struct {
 	DBName     string
 	JWTSecret  string
 	Port       string
-	ProductServiceURL string
 }
 
 func LoadConfig() *Config {
@@ -26,6 +25,5 @@ func LoadConfig() *Config {
 		DBName:     os.Getenv("DB_NAME"),
 		JWTSecret:  os.Getenv("JWT_SECRET"),
 		Port:       os.Getenv("PORT"),
-		ProductServiceURL: os.Getenv("PRODUCT_SERVICE_URL"),
 	}
 }

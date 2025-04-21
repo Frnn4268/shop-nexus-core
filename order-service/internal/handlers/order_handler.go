@@ -18,15 +18,13 @@ import (
 )
 
 type OrderHandler struct {
-	repo              *repository.OrderRepository
-	productServiceURL string
+	repo *repository.OrderRepository
 }
 
-func NewOrderHandler(repo *repository.OrderRepository, productServiceURL string) *OrderHandler {
-    return &OrderHandler{
-        repo: repo,
-        productServiceURL: productServiceURL,
-    }
+func NewOrderHandler(repo *repository.OrderRepository) *OrderHandler {
+	return &OrderHandler{
+		repo: repo,
+	}
 }
 
 // POST /orders
@@ -55,33 +53,16 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Validar productos (nuevo código)
-	client := &http.Client{Timeout: 5 * time.Second}
-	for _, item := range order.Items {
-		productID := item.ProductID
-		resp, err := client.Get(h.productServiceURL + "/products/" + productID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error validando producto: " + err.Error()})
-			return
-		}
-		defer resp.Body.Close()
+	order.UserID = userID
 
-		if resp.StatusCode != http.StatusOK {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Producto no existe: " + productID})
-			return
-		}
-	}
-
-	order.UserID = userID // Asignar al pedido
-
-	// Calcular total
+	// Calcular total (se mantiene)
 	var total float64
 	for _, item := range order.Items {
 		total += item.Price * float64(item.Quantity)
 	}
 	order.Total = total
 
-	// Simular pago
+	// Simular pago (se mantiene)
 	paymentResponse := payment.ProcessPayment(order.Total)
 	if !paymentResponse.Success {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Payment failed"})
@@ -95,7 +76,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Nueva implementación para RabbitMQ con manejo mejorado
+	// Código RabbitMQ (se mantiene sin cambios)
 	rabbitmqURI := os.Getenv("RABBITMQ_URI")
 	if rabbitmqURI == "" {
 		log.Println("RabbitMQ URI no está configurada")
