@@ -28,7 +28,7 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 
-	orderHandler := handlers.NewOrderHandler(orderRepo)
+	orderHandler := handlers.NewOrderHandler(orderRepo, cfg.ProductServiceURL)
 
 	// Endpoints protegidos
 	r.POST("/orders", orderHandler.CreateOrder)

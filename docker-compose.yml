@@ -36,6 +36,7 @@ services:
       - DB_NAME=${DB_NAME}
       - RABBITMQ_URI=${RABBITMQ_URI} 
       - JWT_SECRET=${JWT_SECRET}
+      - PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL}
     depends_on:
       - mongo
       - rabbitmq
