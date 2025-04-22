@@ -35,7 +35,7 @@ def start_consumer():
     channel.queue_bind(
         queue='order_created',
         exchange='order_created',
-        routing_key='order_created'  # Asegúrate que order-service use este routing key
+        routing_key='order_created'
     )
 
     # Función de callback
