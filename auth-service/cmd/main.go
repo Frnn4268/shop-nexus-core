@@ -30,8 +30,6 @@ func main() {
 	// Configurar router
 	router := routes.NewRouter(authHandler, cfg)
 
-	routes.SetupSwagger(router)
-
 	// Configurar servidor HTTP con timeout
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

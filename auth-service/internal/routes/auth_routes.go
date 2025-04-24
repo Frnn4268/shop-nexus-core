@@ -13,9 +13,9 @@ import (
 func NewRouter(authHandler *handlers.AuthHandler, cfg *config.Config) *gin.Engine {
 	router := gin.Default()
 
-	// Middlewares
+	// Configuración CORS
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.AllowedOrigins,
+		AllowOrigins:     cfg.AllowedOrigins, // Ahora existe en Config
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -23,17 +23,20 @@ func NewRouter(authHandler *handlers.AuthHandler, cfg *config.Config) *gin.Engin
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Middlewares de seguridad
 	router.Use(middleware.SecurityHeaders())
-	router.Use(middleware.RateLimiter(cfg.RateLimit))
 
-	// Public routes
+	// Rate Limiter configurado desde variables de entorno
+	router.Use(middleware.RateLimiter(cfg.RateLimit)) // Middleware implementado
+
+	// Rutas públicas
 	public := router.Group("/auth")
 	{
 		public.POST("/register", authHandler.Register)
 		public.POST("/login", authHandler.Login)
 	}
 
-	// Protected routes
+	// Rutas protegidas
 	protected := router.Group("/users")
 	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{

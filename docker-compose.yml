@@ -9,9 +9,11 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}  
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - RATE_LIMIT=${RATE_LIMIT}
+      - TOKEN_EXPIRATION=${TOKEN_EXPIRATION}
     depends_on:
       - mongo
-    command: ["sh", "-c", "./scripts/wait-for.sh mongo:27017 -- ./auth-service"]
     networks:
       - shop-nexus-core
   

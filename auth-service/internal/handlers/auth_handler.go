@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"auth-service/internal/config"
 	"auth-service/internal/models"
 	"auth-service/internal/repository"
-	"auth-service/internal/utils"
+	utils "auth-service/internal/utils/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -33,8 +34,11 @@ func stringToRoles(roles []string) []models.Role {
 	return result
 }
 
-func NewAuthHandler(userRepo *repository.UserRepository, jwtSecret string) *AuthHandler {
-	return &AuthHandler{userRepo: userRepo, jwtSecret: jwtSecret}
+func NewAuthHandler(userRepo *repository.UserRepository, cfg *config.Config) *AuthHandler {
+	return &AuthHandler{
+		userRepo:  userRepo,
+		jwtSecret: cfg.JWTSecret,
+	}
 }
 
 // Register: POST /auth/register
