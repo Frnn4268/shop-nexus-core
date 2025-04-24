@@ -25,6 +25,8 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - RATE_LIMIT=${RATE_LIMIT}
     depends_on:
       - mongo
     networks:
@@ -39,6 +41,8 @@ services:
       - DB_NAME=${DB_NAME}
       - RABBITMQ_URI=${RABBITMQ_URI} 
       - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - RATE_LIMIT=${RATE_LIMIT}
     depends_on:
       - mongo
       - rabbitmq

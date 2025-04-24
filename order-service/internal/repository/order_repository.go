@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"order-service/internal/models"
 	"time"
@@ -38,10 +39,18 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) 
 
 	return nil
 }
+
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id string) (*models.Order, error) {
-	objID, _ := primitive.ObjectIDFromHex(id)
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, errors.New("invalid order ID format")
+	}
+
 	var order models.Order
-	err := r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&order)
+	err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&order)
+	if err == mongo.ErrNoDocuments {
+		return nil, errors.New("order not found")
+	}
 	return &order, err
 }
 

@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"order-service/internal/handlers/events"
 	"order-service/internal/models"
-	"order-service/internal/payment"
 	"order-service/internal/repository"
+	"order-service/internal/services/payment"
 	"os"
 	"strings"
 	"time"
@@ -18,12 +19,20 @@ import (
 )
 
 type OrderHandler struct {
-	repo *repository.OrderRepository
+	repo           *repository.OrderRepository
+	paymentService *payment.Processor
+	eventPublisher *events.EventPublisher
 }
 
-func NewOrderHandler(repo *repository.OrderRepository) *OrderHandler {
+func NewOrderHandler(
+	repo *repository.OrderRepository,
+	paymentService *payment.Processor,
+	eventPublisher *events.EventPublisher,
+) *OrderHandler {
 	return &OrderHandler{
-		repo: repo,
+		repo:           repo,
+		paymentService: paymentService,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -63,7 +72,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	order.Total = total
 
 	// Simular pago (se mantiene)
-	paymentResponse := payment.ProcessPayment(order.Total)
+	paymentResponse := h.paymentService.Process(order.Total)
 	if !paymentResponse.Success {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Payment failed"})
 		return
