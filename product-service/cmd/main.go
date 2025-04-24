@@ -6,19 +6,19 @@ import (
 	"product-service/internal/config"
 	"product-service/internal/handlers"
 	"product-service/internal/repository"
+	"product-service/pkg/database"
 	middleware "product-service/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.MongoDBURI))
+	// Conexión a MongoDB usando el nuevo cliente
+	client, err := database.NewMongoClient(cfg.MongoDBURI)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error conectando a MongoDB:", err)
 	}
 	defer client.Disconnect(context.Background())
 

@@ -3,23 +3,21 @@ FROM golang:1.24.2-alpine3.21 AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git  
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 
-RUN go mod download
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o product-service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /product-service ./cmd/main.go
 
 # Runtime stage
-FROM alpine:latest
+FROM gcr.io/distroless/static-debian12
 
-WORKDIR /app
-
-COPY --from=builder /app/product-service .
-
-COPY .env .
+WORKDIR /
+COPY --from=builder /product-service /product-service
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8001
+USER nonroot:nonroot
 
-CMD ["./product-service"]
+CMD ["/product-service"]
