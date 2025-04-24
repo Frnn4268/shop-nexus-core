@@ -3,11 +3,17 @@ FROM golang:1.24.2-alpine3.21 AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache git ca-certificates
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
+# Actualizar módulos
+RUN go mod tidy
+
+# Compilar
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /product-service ./cmd/main.go
 
 # Runtime stage
