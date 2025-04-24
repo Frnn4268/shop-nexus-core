@@ -60,6 +60,8 @@ services:
       - RABBITMQ_URI=${RABBITMQ_URI}
       - DB_NAME=${DB_NAME}
       - API_KEYS=${API_KEYS}
+      - GUNICORN_WORKERS=8 
+      - GUNICORN_TIMEOUT=60
     depends_on:
       rabbitmq:
         condition: service_healthy
