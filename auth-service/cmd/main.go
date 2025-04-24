@@ -4,67 +4,45 @@ import (
 	"auth-service/internal/config"
 	"auth-service/internal/handlers"
 	"auth-service/internal/repository"
-	"auth-service/pkg/middleware"
+	"auth-service/internal/routes"
+	"auth-service/pkg/database"
 	"context"
 	"log"
+	"net/http"
 	"time"
-
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/ulule/limiter/v3"
-	ginmw "github.com/ulule/limiter/v3/drivers/middleware/gin"
-	"github.com/ulule/limiter/v3/drivers/store/memory"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 
-	// Conectar a MongoDB
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.MongoDBURI))
+	// Conexión a MongoDB
+	mongoClient, err := database.NewMongoClient(cfg.MongoDBURI)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to connect to MongoDB:", err)
 	}
-	defer client.Disconnect(context.Background())
+	defer mongoClient.Disconnect(context.Background())
 
-	db := client.Database(cfg.DBName)
+	// Inicializar repositorios y handlers
+	db := mongoClient.Database(cfg.DBName)
 	userRepo := repository.NewUserRepository(db)
+	authHandler := handlers.NewAuthHandler(userRepo, cfg)
 
-	// Configurar Gin
-	r := gin.Default()
+	// Configurar router
+	router := routes.NewRouter(authHandler, cfg)
 
-	// Configurar CORS
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+	routes.SetupSwagger(router)
 
-	// Configurar Rate Limiter
-	rate := limiter.Rate{
-		Period: 1 * time.Minute,
-		Limit:  10,
-	}
-	store := memory.NewStore()
-	limiterInstance := limiter.New(store, rate)
-	rateLimiterMiddleware := ginmw.NewMiddleware(limiterInstance) // Variable renombrada
-	r.Use(rateLimiterMiddleware)
-
-	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret)
-
-	// Endpoints públicos
-	r.POST("/auth/register", authHandler.Register)
-	r.POST("/auth/login", authHandler.Login)
-
-	// Endpoints protegidos
-	authRoutes := r.Group("/users")
-	authRoutes.Use(middleware.AuthMiddleware(cfg.JWTSecret)) // Middleware JWT correcto
-	{
-		authRoutes.GET("/:id", authHandler.GetUserByID)
+	// Configurar servidor HTTP con timeout
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	r.Run(":" + cfg.Port)
+	log.Printf("Server running on port %s", cfg.Port)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal("Server failed:", err)
+	}
 }
