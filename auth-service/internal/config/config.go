@@ -19,10 +19,8 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("⚠️  Error cargando .env: %v", err)
-		log.Println("ℹ️  Asegúrate de que el archivo .env existe y está en el directorio correcto.")
+	if err := godotenv.Load(); err != nil {
+		log.Print("Warning: No .env file found")
 	}
 
 	return &Config{
