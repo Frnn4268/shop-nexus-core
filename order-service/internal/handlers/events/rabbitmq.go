@@ -1,11 +1,12 @@
 package events
 
 import (
-    "encoding/json"
-    "log"
-    "time"
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/streadway/amqp"
+	"github.com/streadway/amqp"
 )
 
 type EventPublisher struct {
@@ -14,24 +15,20 @@ type EventPublisher struct {
 
 // NewEventPublisher crea una nueva instancia del publicador
 func NewEventPublisher(uri string) (*EventPublisher, error) {
-    maxRetries := 3
+    maxRetries := 10  // Aumentar reintentos
     var conn *amqp.Connection
     var err error
 
     for i := 0; i < maxRetries; i++ {
         conn, err = amqp.Dial(uri)
         if err == nil {
-            break
+            return &EventPublisher{conn: conn}, nil
         }
-        log.Printf("Intento %d/%d: Error conectando a RabbitMQ: %v", i+1, maxRetries, err)
-        time.Sleep(2 * time.Second)
+        log.Printf("Intento %d/%d fallido. Esperando 5 segundos...", i+1, maxRetries)
+        time.Sleep(5 * time.Second)
     }
 
-    if err != nil {
-        return nil, err
-    }
-
-    return &EventPublisher{conn: conn}, nil
+    return nil, fmt.Errorf("no se pudo conectar después de %d intentos: %v", maxRetries, err)
 }
 
 func (p *EventPublisher) PublishOrderCreated(order interface{}) error {

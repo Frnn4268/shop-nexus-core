@@ -47,7 +47,9 @@ services:
       - mongo
       - rabbitmq
     networks:
-      - shop-nexus-core
+      shop-nexus-core:
+        aliases:
+          - order-service
 
   recommendation-service:
     build: ./recommendation-service
@@ -88,10 +90,10 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
       timeout: 10s
-      retries: 10
+      retries: 20
     networks:
       - shop-nexus-core
 
@@ -112,6 +114,9 @@ services:
 networks:
   shop-nexus-core:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   mongo-data:
