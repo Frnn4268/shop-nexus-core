@@ -2,18 +2,27 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-ENV FLASK_APP=app.main:app
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/home/appuser/.local/bin:${PATH}" \
+    FLASK_APP=app.main:app
 
-RUN apt-get update && apt-get install -y gcc python3-dev curl 
-RUN pip install celery==5.3.6
+# Instalar dependencias del sistema y limpiar cache
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Crear usuario no-root
+# Crear usuario y configurar permisos
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-COPY . .
+# Instalar dependencias de Python
+COPY --chown=appuser:appuser requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["sh", "-c", "celery -A app.tasks.notifications worker --loglevel=info & flask run --host=0.0.0.0 --port=8004"]
+# Copiar código
+COPY --chown=appuser:appuser . .
+
+# Comando de inicio mejorado
+CMD ["sh", "-c", "flask run --host=0.0.0.0 --port=8004 & celery -A app.tasks.notifications worker --loglevel=info"]
