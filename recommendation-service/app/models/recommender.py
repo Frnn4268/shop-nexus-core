@@ -25,6 +25,14 @@ class RecommendationEngine:
         
     @retry(wait=wait_exponential(multiplier=1, min=2, max=10))
     def load_initial_data(self):
+        logger.info("🔍 Verificando datos en MongoDB...")
+        total_ordenes = mongo_client.db.orders.count_documents({})
+        logger.info(f"📊 Total de órdenes en DB: {total_ordenes}")
+        
+        if total_ordenes == 0:
+            logger.warning("⚠️ ¡No hay órdenes en la base de datos!")
+            return
+    
         """Carga inicial con manejo de progreso"""
         try:
             logger.info("🏁 Iniciando carga de datos desde MongoDB...")
@@ -108,8 +116,7 @@ class RecommendationEngine:
     def get_recommendations(self, user_id):
         """Genera recomendaciones para un usuario específico"""
         if not self.model:
-            logger.warning("Modelo no entrenado, no se pueden generar recomendaciones")
-            return []
+            return {"error": "Modelo no entrenado. Por favor espere..."}, 503
         
         try:
             logger.info(f"🧠 Generando recomendaciones para usuario: {user_id}")

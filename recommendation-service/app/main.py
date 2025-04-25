@@ -42,7 +42,13 @@ def run_consumer():
 if __name__ == '__main__':
     # Inicialización del engine
     logger.info("🚀 Inicializando motor de recomendaciones...")
-    engine.initialize()
+    
+    try:
+        engine.initialize()
+        logger.info("✅ Modelo inicial entrenado!")
+    except Exception as e:
+        logger.error(f"🔥 Error inicializando modelo: {str(e)}")
+        exit(1)
     
     # Hilo para RabbitMQ
     consumer_thread = threading.Thread(target=run_consumer, daemon=True)

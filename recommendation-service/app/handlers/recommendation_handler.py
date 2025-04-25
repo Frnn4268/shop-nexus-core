@@ -73,6 +73,13 @@ class RabbitMQConsumer:
                 self._should_reconnect = False
 
 def start_consumer():
-    consumer = RabbitMQConsumer()
-    consumer.initialize()
-    consumer.run()
+    logger.info("🔄 Iniciando consumer de RabbitMQ...")
+    while True:
+        try:
+            consumer = RabbitMQConsumer()
+            consumer.initialize()
+            consumer.run()
+            channel.start_consuming()
+        except Exception as e:
+            logger.error(f"🚨 Error fatal: {str(e)}", exc_info=True)
+            time.sleep(10)
