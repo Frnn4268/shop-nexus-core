@@ -1,24 +1,30 @@
 from flask import Flask, jsonify, request
-from app.models.recommender import RecommendationEngine
-from app.handlers.recommendation_handler import start_consumer
-from threading import Thread
 import os
+import threading
+import logging
+from app.models.recommender import RecommendationEngine
 
 app = Flask(__name__)
 engine = RecommendationEngine()
 
-# Iniciar consumidor de RabbitMQ en segundo plano
-Thread(target=start_consumer, daemon=True).start()
+# Configuración de logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 API_KEYS = os.getenv("API_KEYS", "").split(",")
 
 @app.route('/recommendations/<user_id>', methods=['GET'])
 def get_recommendations(user_id):
-    recommendations = engine.get_recommendations(user_id)
-    return jsonify({
-        "user_id": user_id,
-        "recommendations": recommendations
-    })
+    try:
+        recommendations = engine.get_recommendations(user_id)
+        return jsonify({
+            "user_id": user_id,
+            "recommendations": recommendations
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.before_request
 def check_auth():
@@ -27,5 +33,24 @@ def check_auth():
         if not api_key or api_key not in API_KEYS:
             return jsonify({"error": "Unauthorized"}), 401
 
+def run_consumer():
+    """Ejecuta el consumer en un hilo separado"""
+    from app.handlers.recommendation_handler import start_consumer
+    logger.info("🧵 Iniciando consumer en segundo plano...")
+    start_consumer()
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=os.getenv("PORT", 8003))
+    # Inicialización del engine
+    logger.info("🚀 Inicializando motor de recomendaciones...")
+    engine.initialize()
+    
+    # Hilo para RabbitMQ
+    consumer_thread = threading.Thread(target=run_consumer, daemon=True)
+    consumer_thread.start()
+    
+    # Iniciar Flask
+    app.run(
+        host='0.0.0.0', 
+        port=int(os.getenv("PORT", 8003)),
+        use_reloader=False
+    )
