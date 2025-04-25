@@ -133,7 +133,9 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		false,           // autoDelete
 		false,           // exclusive
 		false,           // noWait
-		nil,             // args
+		amqp.Table{
+			"x-message-ttl": int32(86400000),
+		},
 	)
 	if err != nil {
 		log.Printf("Error declarando cola: %v", err)
