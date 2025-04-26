@@ -1,15 +1,15 @@
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 from datetime import datetime, timedelta
 import logging
 import time
-from collections import defaultdict
 from joblib import dump, load
 import os
+from .mongo_client import db
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,24 @@ class EnhancedRecommendationEngine:
         self.model = None
         self.user_profiles = defaultdict(dict)
         self.product_features = {}
+        self.products = []  # Necesario para el endpoint /health
         self.last_trained = datetime.min
-        self.is_ready = False
+        self.is_ready = False  # Bandera de estado
         self.scaler = None
         self.preprocessor = None
+    
+    def _load_user_behavior(self):
+        pipeline = [...]
+        user_data = db.orders.aggregate(pipeline)  # Corregido
+    
+    def _analyze_similar_users(self, user_ids):
+        products = db.products.find(query, {  # Corregido
+            "_id": 1,
+            "name": 1,
+            "category": 1,
+            "price": 1,
+            "rating": 1
+        }).sort("rating", -1).limit(10)
         
     def initialize(self):
         """Inicialización mejorada con reintentos inteligentes"""
@@ -47,28 +61,29 @@ class EnhancedRecommendationEngine:
         raise RuntimeError("No se pudo inicializar el motor de recomendaciones")
 
     def _load_product_features(self):
-        """Carga características detalladas de los productos"""
-        products = mongo_client.db.products.find({}, {
-            "_id": 1,
-            "category": 1,
-            "price": 1,
-            "rating": 1,
-            "tags": 1
-        })
-        
-        self.product_features = {
-            str(p["_id"]): {
+        try:
+            products = list(db.products.find({}, {  # Convertir a lista
+                "_id": 1,
+                "category": 1,
+                "price": 1,
+                "rating": 1,
+                "tags": 1
+            }))
+            
+            self.products = [str(p["_id"]) for p in products]
+            self.product_features = {str(p["_id"]): {
                 "category": p.get("category", "unknown"),
                 "price": float(p.get("price", 0)),
                 "rating": float(p.get("rating", 0)),
                 "tags": p.get("tags", [])
-            }
-            for p in products
-        }
-        
-        if not self.product_features:
-            logger.warning("⚠️ No se encontraron características de productos")
-            raise ValueError("Datos de productos no disponibles")
+            } for p in products}
+            
+            if not self.product_features:
+                raise ValueError("No hay productos en la base de datos")
+                
+        except Exception as e:
+            logger.error("🔥 Error cargando productos: %s", str(e))
+            raise
 
     def _load_user_behavior(self):
         """Carga el comportamiento de usuario con agregaciones complejas"""
@@ -91,7 +106,7 @@ class EnhancedRecommendationEngine:
             }}
         ]
         
-        user_data = mongo_client.db.orders.aggregate(pipeline)
+        user_data = db.orders.aggregate(pipeline)
         
         for user in user_data:
             user_id = str(user["_id"])
@@ -189,7 +204,7 @@ class EnhancedRecommendationEngine:
             "rating": {"$gte": avg_rating - 1}
         }
         
-        products = mongo_client.db.products.find(query, {
+        products = db.products.find(query, {
             "_id": 1,
             "name": 1,
             "category": 1,
@@ -211,9 +226,9 @@ class EnhancedRecommendationEngine:
             {"$limit": 3}
         ]
         
-        top_categories = [c["_id"] for c in mongo_client.db.products.aggregate(pipeline)]
+        top_categories = [c["_id"] for c in db.products.aggregate(pipeline)]
         
-        products = mongo_client.db.products.find(
+        products = db.products.find.find(
             {"category": {"$in": top_categories}},
             {"_id": 1}
         ).sort([("rating", -1), ("price", 1)]).limit(5)

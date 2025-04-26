@@ -79,8 +79,7 @@ def health():
     return jsonify({
         "status": "ready" if engine.is_ready else "initializing",
         "users": len(engine.user_profiles),
-        "products": len(engine.product_features),
-        "last_trained": engine.last_trained.isoformat() if engine.last_trained else None
+        "products": len(engine.products) if engine.products else 0 
     })
 
 if __name__ == '__main__':
