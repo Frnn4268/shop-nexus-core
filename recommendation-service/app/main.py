@@ -26,6 +26,14 @@ def get_recommendations(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/health')
+def health():
+    return jsonify({
+        "status": "ready" if engine.is_ready else "initializing",
+        "users": len(engine.user_data),
+        "products": len(engine.products)
+    })
+
 @app.before_request
 def check_auth():
     if request.endpoint == 'get_recommendations':
