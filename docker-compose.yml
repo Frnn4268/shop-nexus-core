@@ -44,8 +44,10 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - RATE_LIMIT=${RATE_LIMIT}
     depends_on:
-      - mongo
-      - rabbitmq
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       shop-nexus-core:
         aliases:
