@@ -8,11 +8,15 @@ ENV PYTHONUNBUFFERED=1 \
     GUNICORN_TIMEOUT=300 \
     GUNICORN_WORKER_CLASS=gevent
 
-# Instalar dependencias esenciales
+# Añadir más dependencias de compilación
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
     python3-dev \
+    libopenblas-dev \
     libgomp1 \
+    cmake \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

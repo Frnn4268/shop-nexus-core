@@ -134,7 +134,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		false,           // exclusive
 		false,           // noWait
 		amqp.Table{
-			"x-message-ttl": int32(86400000),
+			"x-message-ttl": int64(86400000),
 		},
 	)
 	if err != nil {
