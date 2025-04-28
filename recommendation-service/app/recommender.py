@@ -58,13 +58,24 @@ def train_model():
     }, MODEL_PATH)
 
 def load_model():
-    if os.path.exists(MODEL_PATH):
-        return load(MODEL_PATH)
-    return None
+    print(f"🔍 Intentando cargar modelo desde: {MODEL_PATH}")
+    try:
+        if os.path.exists(MODEL_PATH):
+            model_data = joblib.load(MODEL_PATH)
+            print("✅ Modelo cargado exitosamente")
+            return model_data
+        else:
+            print("⚠️ Archivo de modelo no encontrado")
+            return None
+    except Exception as e:
+        print(f"🔥 Error cargando modelo: {str(e)}")
+        return None
 
 def get_recommendations(user_id, num=5):
+    print(f"🔍 Buscando recomendaciones para user_id: {user_id}")
     model_data = load_model()
     if not model_data:
+        print("⚠️ Modelo no cargado!")
         return []
     
     # Convertir user_id a índice

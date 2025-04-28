@@ -18,7 +18,7 @@ try:
 except Exception as e:
     print(f"❌ Error cargando el modelo: {str(e)}")
 
-@app.route("/recommendations/<user_id>", methods=["GET"])
+@app.route("/recommendations/<string:user_id>", methods=["GET"])
 def recommendations(user_id):
     try:
         # Validar formato del user_id
@@ -50,10 +50,9 @@ def recommendations(user_id):
         } for product in products]
         
         return jsonify(recommended_products), 200
-        
     except Exception as e:
-        app.logger.error(f"Error en recomendaciones: {str(e)}")
-        return jsonify({"error": "Error interno del servidor"}), 500
+        app.logger.error(f"Error: {str(e)}")
+        return jsonify({"error": "Error interno"}), 500
 
 @app.route('/health', methods=['GET'])
 def health():

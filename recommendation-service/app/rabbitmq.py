@@ -6,30 +6,35 @@ from .recommender import train_model
 
 class RecommendationConsumer:
     def __init__(self):
+        # Añadir esta sección faltante
+        self.QUEUE_CONFIG = {
+            'queue': 'order_created',
+            'durable': True,
+            'arguments': {
+                'x-message-ttl': 86400000,
+                'x-queue-type': 'classic',
+                'x-dead-letter-exchange': ''
+            }
+        }
+        
         self.connection = None
         self.channel = None
         self.order_count = 0
-        self.TRAIN_INTERVAL = int(os.getenv("TRAIN_INTERVAL", 100))
-        self.QUEUE_ARGS = {
-            'x-message-ttl': 86400000,
-            'x-queue-type': 'classic'
-        }
+        self.TRAIN_INTERVAL = int(os.getenv("TRAIN_INTERVAL", 10))
 
     def connect(self):
-        for _ in range(3):  # 3 intentos agresivos
+        for attempt in range(3):
             try:
                 self.connection = pika.BlockingConnection(
                     pika.URLParameters(os.getenv("RABBITMQ_URI"))
                 )
                 self.channel = self.connection.channel()
-                
-                # Fuerza la creación con parámetros exactos
                 self.channel.queue_declare(**self.QUEUE_CONFIG)
+                print("✅ Cola configurada correctamente")
                 return
-                
             except pika.exceptions.ChannelClosedByBroker as e:
                 if e.reply_code == 406:
-                    # Destruye y recrea la cola
+                    print("⚠️ Reconfigurando cola...")
                     self.channel = self.connection.channel()
                     self.channel.queue_delete(queue=self.QUEUE_CONFIG['queue'])
                     self.channel.queue_declare(**self.QUEUE_CONFIG)
