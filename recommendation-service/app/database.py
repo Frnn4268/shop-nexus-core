@@ -1,9 +1,6 @@
 from pymongo import MongoClient
-import os
-
-def get_mongo_client():
-    return MongoClient(os.getenv("MONGODB_URI"))
+from flask import current_app
 
 def get_db():
-    client = get_mongo_client()
-    return client[os.getenv("DB_NAME")]
+    client = MongoClient(current_app.config['MONGO_URI'])
+    return client[current_app.config['DB_NAME']]
