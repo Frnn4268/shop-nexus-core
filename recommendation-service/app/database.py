@@ -1,6 +1,6 @@
 from pymongo import MongoClient
-from flask import current_app
+import os
 
 def get_db():
-    client = MongoClient(current_app.config['MONGO_URI'])
-    return client[current_app.config['DB_NAME']]
+    client = MongoClient(os.getenv("MONGO_URI", "mongodb://mongo:27017"))
+    return client[os.getenv("DB_NAME", "shop-nexus-core")]
