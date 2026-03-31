@@ -1,46 +1,63 @@
-version: '3.8'
-
 services:
   auth-service:
     build: ./auth-service
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - DB_NAME=${DB_NAME}
-      - JWT_SECRET=${JWT_SECRET}  
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - PORT=8000
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - RATE_LIMIT=${RATE_LIMIT}
       - TOKEN_EXPIRATION=${TOKEN_EXPIRATION}
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/auth-service", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - shop-nexus-core
   
   product-service:
     build: ./product-service
+    restart: unless-stopped
     ports:
       - "8001:8001"
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
+      - PORT=8001
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - RATE_LIMIT=${RATE_LIMIT}
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/product-service", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - shop-nexus-core
 
   order-service:
     build: ./order-service
+    restart: unless-stopped
     ports:
       - "8002:8002"
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - DB_NAME=${DB_NAME}
-      - RABBITMQ_URI=${RABBITMQ_URI} 
+      - RABBITMQ_URI=${RABBITMQ_URI}
       - JWT_SECRET=${JWT_SECRET}
+      - PORT=8002
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - RATE_LIMIT=${RATE_LIMIT}
     depends_on:
@@ -48,6 +65,11 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/order-service", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       shop-nexus-core:
         aliases:
@@ -55,22 +77,111 @@ services:
 
   recommendation-service:
     build: ./recommendation-service
+    restart: unless-stopped
     ports:
       - "8003:8003"
     environment:
+      - PORT=8003
       - MONGODB_URI=${MONGODB_URI}
       - RABBITMQ_URI=${RABBITMQ_URI}
       - DB_NAME=${DB_NAME}
-      - TRAIN_INTERVAL=10  # Entrenar cada 100 órdenes
+      - MONGO_MAX_POOL_SIZE=${MONGO_MAX_POOL_SIZE:-50}
+      - MONGO_SERVER_SELECTION_TIMEOUT_MS=${MONGO_SERVER_SELECTION_TIMEOUT_MS:-5000}
+      - MONGO_CONNECT_TIMEOUT_MS=${MONGO_CONNECT_TIMEOUT_MS:-5000}
+      - MONGO_SOCKET_TIMEOUT_MS=${MONGO_SOCKET_TIMEOUT_MS:-30000}
+      - ORDER_EVENTS_EXCHANGE=${ORDER_EVENTS_EXCHANGE:-order_created}
+      - ORDER_EVENTS_QUEUE=${ORDER_EVENTS_QUEUE:-order_created}
+      - ORDER_EVENTS_ROUTING_KEY=${ORDER_EVENTS_ROUTING_KEY:-order_created}
+      - MODEL_PATH=${MODEL_PATH:-/app/model/model.joblib}
+      - MODEL_REGISTRY_DIR=${MODEL_REGISTRY_DIR:-/app/model/artifacts}
+      - MODEL_VERSIONS_TO_KEEP=${MODEL_VERSIONS_TO_KEEP:-5}
+      - MODEL_FACTORS=${MODEL_FACTORS:-32}
+      - MODEL_ITERATIONS=${MODEL_ITERATIONS:-20}
+      - MODEL_REGULARIZATION=${MODEL_REGULARIZATION:-0.1}
+      - MODEL_ALPHA=${MODEL_ALPHA:-20}
+      - POPULAR_FALLBACK_SIZE=${POPULAR_FALLBACK_SIZE:-20}
+      - TRAIN_INTERVAL=${TRAIN_INTERVAL:-10}
+      - EVALUATION_TOP_K=${EVALUATION_TOP_K:-10}
     volumes:
-      - model-data:/app  # Persistir el modelo entrenado
+      - model-data:/app/model
     depends_on:
       rabbitmq:
         condition: service_healthy
       mongo:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - shop-nexus-core
+
+  recommendation-worker:
+    build: ./recommendation-service
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker_consumer"]
+    environment:
+      - PORT=8003
+      - MONGODB_URI=${MONGODB_URI}
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - DB_NAME=${DB_NAME}
+      - MONGO_MAX_POOL_SIZE=${MONGO_MAX_POOL_SIZE:-50}
+      - MONGO_SERVER_SELECTION_TIMEOUT_MS=${MONGO_SERVER_SELECTION_TIMEOUT_MS:-5000}
+      - MONGO_CONNECT_TIMEOUT_MS=${MONGO_CONNECT_TIMEOUT_MS:-5000}
+      - MONGO_SOCKET_TIMEOUT_MS=${MONGO_SOCKET_TIMEOUT_MS:-30000}
+      - ORDER_EVENTS_EXCHANGE=${ORDER_EVENTS_EXCHANGE:-order_created}
+      - ORDER_EVENTS_QUEUE=${ORDER_EVENTS_QUEUE:-order_created}
+      - ORDER_EVENTS_ROUTING_KEY=${ORDER_EVENTS_ROUTING_KEY:-order_created}
+      - MODEL_PATH=${MODEL_PATH:-/app/model/model.joblib}
+      - MODEL_REGISTRY_DIR=${MODEL_REGISTRY_DIR:-/app/model/artifacts}
+      - MODEL_VERSIONS_TO_KEEP=${MODEL_VERSIONS_TO_KEEP:-5}
+      - MODEL_FACTORS=${MODEL_FACTORS:-32}
+      - MODEL_ITERATIONS=${MODEL_ITERATIONS:-20}
+      - MODEL_REGULARIZATION=${MODEL_REGULARIZATION:-0.1}
+      - MODEL_ALPHA=${MODEL_ALPHA:-20}
+      - POPULAR_FALLBACK_SIZE=${POPULAR_FALLBACK_SIZE:-20}
+      - TRAIN_INTERVAL=${TRAIN_INTERVAL:-10}
+      - EVALUATION_TOP_K=${EVALUATION_TOP_K:-10}
+    volumes:
+      - model-data:/app/model
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks:
+      - shop-nexus-core
+
+  rag-service:
+    build: ./rag-service
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=${RAG_PORT:-8005}
+      - MONGODB_URI=${MONGODB_URI}
+      - DB_NAME=${DB_NAME}
+      - MONGO_MAX_POOL_SIZE=${MONGO_MAX_POOL_SIZE:-50}
+      - MONGO_SERVER_SELECTION_TIMEOUT_MS=${MONGO_SERVER_SELECTION_TIMEOUT_MS:-5000}
+      - MONGO_CONNECT_TIMEOUT_MS=${MONGO_CONNECT_TIMEOUT_MS:-5000}
+      - MONGO_SOCKET_TIMEOUT_MS=${MONGO_SOCKET_TIMEOUT_MS:-30000}
+      - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-/app/chroma}
+      - CHROMA_COLLECTION_NAME=${CHROMA_COLLECTION_NAME:-catalog}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      - RAG_TOP_K=${RAG_TOP_K:-5}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-meta-llama/llama-3.1-8b-instruct:free}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_REFERER=${OPENROUTER_REFERER:-https://shop-nexus-core.local}
+      - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-shop-nexus-core}
+    volumes:
+      - rag-data:/app/chroma
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health')"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -79,25 +190,100 @@ services:
 
   notification-service:
     build: ./notification-service
+    restart: unless-stopped
     ports:
       - "8004:8004"
     environment:
+      - PORT=8004
       - RABBITMQ_URI=${RABBITMQ_URI}
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+      - RABBITMQ_HEARTBEAT=${RABBITMQ_HEARTBEAT:-600}
+      - RABBITMQ_RETRY_DELAY=${RABBITMQ_RETRY_DELAY:-5}
+      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-10}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-rpc://}
+      - ORDER_EVENTS_QUEUE=${ORDER_EVENTS_QUEUE:-order_created}
+      - ORDER_EVENTS_EXCHANGE=${ORDER_EVENTS_EXCHANGE:-order_created}
+      - ORDER_EVENTS_ROUTING_KEY=${ORDER_EVENTS_ROUTING_KEY:-order_created}
+      - NOTIFICATION_EMAIL_DOMAIN=${NOTIFICATION_EMAIL_DOMAIN:-example.com}
+      - NOTIFICATION_PHONE_DEFAULT=${NOTIFICATION_PHONE_DEFAULT:-+1234567890}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - FLASK_ENV=production
     depends_on:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
       - shop-nexus-core
+
+  notification-worker:
+    build: ./notification-service
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker_consumer"]
+    environment:
+      - PORT=8004
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+      - RABBITMQ_HEARTBEAT=${RABBITMQ_HEARTBEAT:-600}
+      - RABBITMQ_RETRY_DELAY=${RABBITMQ_RETRY_DELAY:-5}
+      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-10}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-rpc://}
+      - ORDER_EVENTS_QUEUE=${ORDER_EVENTS_QUEUE:-order_created}
+      - ORDER_EVENTS_EXCHANGE=${ORDER_EVENTS_EXCHANGE:-order_created}
+      - ORDER_EVENTS_ROUTING_KEY=${ORDER_EVENTS_ROUTING_KEY:-order_created}
+      - NOTIFICATION_EMAIL_DOMAIN=${NOTIFICATION_EMAIL_DOMAIN:-example.com}
+      - NOTIFICATION_PHONE_DEFAULT=${NOTIFICATION_PHONE_DEFAULT:-+1234567890}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FLASK_ENV=production
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - shop-nexus-core
+
+  notification-celery:
+    build: ./notification-service
+    restart: unless-stopped
+    command: ["celery", "-A", "app.tasks.notifications", "worker", "--loglevel=info"]
+    environment:
+      - PORT=8004
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+      - RABBITMQ_HEARTBEAT=${RABBITMQ_HEARTBEAT:-600}
+      - RABBITMQ_RETRY_DELAY=${RABBITMQ_RETRY_DELAY:-5}
+      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-10}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-rpc://}
+      - ORDER_EVENTS_QUEUE=${ORDER_EVENTS_QUEUE:-order_created}
+      - ORDER_EVENTS_EXCHANGE=${ORDER_EVENTS_EXCHANGE:-order_created}
+      - ORDER_EVENTS_ROUTING_KEY=${ORDER_EVENTS_ROUTING_KEY:-order_created}
+      - NOTIFICATION_EMAIL_DOMAIN=${NOTIFICATION_EMAIL_DOMAIN:-example.com}
+      - NOTIFICATION_PHONE_DEFAULT=${NOTIFICATION_PHONE_DEFAULT:-+1234567890}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FLASK_ENV=production
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - shop-nexus-core
     
   rabbitmq:
     image: rabbitmq:3-management
+    restart: unless-stopped
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -114,6 +300,7 @@ services:
 
   mongo:
     image: mongo:6.0
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
@@ -136,3 +323,4 @@ networks:
 volumes:
   mongo-data:
   model-data:
+  rag-data:

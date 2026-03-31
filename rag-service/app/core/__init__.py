@@ -1,0 +1,1 @@
+"""Core configuration and infrastructure primitives for rag-service."""

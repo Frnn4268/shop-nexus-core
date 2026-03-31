@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,7 +20,7 @@ func NewMongoClient(uri string) (*mongo.Client, error) {
 	// Verify connection
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		log.Fatal("Failed to ping MongoDB:", err)
+		return nil, err
 	}
 
 	return client, nil

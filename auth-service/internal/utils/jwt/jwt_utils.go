@@ -15,12 +15,16 @@ type CustomClaims struct {
 }
 
 func GenerateJWT(userID, email string, roles []string, secret string) (string, error) {
+	return GenerateJWTWithTTL(userID, email, roles, secret, 24*time.Hour)
+}
+
+func GenerateJWTWithTTL(userID, email string, roles []string, secret string, ttl time.Duration) (string, error) {
 	claims := models.JWTClaims{
 		UserID: userID,
 		Email:  email,
 		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 		},
 	}
 

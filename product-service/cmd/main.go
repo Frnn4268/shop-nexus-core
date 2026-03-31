@@ -2,44 +2,69 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"product-service/internal/config"
 	"product-service/internal/handlers"
+	"product-service/internal/health"
 	"product-service/internal/repository"
+	"product-service/internal/routes"
 	"product-service/pkg/database"
-	middleware "product-service/pkg/middleware"
-
-	"github.com/gin-gonic/gin"
+	"time"
 )
 
 func main() {
 	cfg := config.LoadConfig()
+	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
+		if err := runHealthcheck(cfg); err != nil {
+			log.Print(err)
+			os.Exit(1)
+		}
+		return
+	}
 
-	// Conexión a MongoDB usando el nuevo cliente
+	// Connect to MongoDB using the shared client helper.
 	client, err := database.NewMongoClient(cfg.MongoDBURI)
 	if err != nil {
-		log.Fatal("Error conectando a MongoDB:", err)
+		log.Fatal("Failed to connect to MongoDB:", err)
 	}
 	defer client.Disconnect(context.Background())
 
 	db := client.Database(cfg.DBName)
 	productRepo := repository.NewProductRepository(db)
 
-	r := gin.Default()
-	r.Use(middleware.AuthMiddleware(cfg.JWTSecret))
-
 	productHandler := handlers.NewProductHandler(productRepo)
+	healthChecker := health.NewChecker("product-service", map[string]health.CheckFunc{
+		"mongodb": func(ctx context.Context) error {
+			healthCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+			return client.Ping(healthCtx, nil)
+		},
+	})
+	healthHandler := handlers.NewHealthHandler(healthChecker)
+	router := routes.NewRouter(productHandler, healthHandler, cfg)
 
-	// Productos
-	r.GET("/products", productHandler.GetAllProducts)
-	r.GET("/products/:id", productHandler.GetProductByID)
-	r.POST("/products", productHandler.CreateProduct)
-	r.PUT("/products/:id", productHandler.UpdateProduct)
-	r.DELETE("/products/:id", productHandler.DeleteProduct)
+	if err := router.Run(":" + cfg.Port); err != nil {
+		log.Fatal("Failed to start product-service:", err)
+	}
+}
 
-	// Categorías
-	r.GET("/categories", productHandler.GetAllCategories)
-	r.POST("/categories", productHandler.CreateCategory)
+func runHealthcheck(cfg *config.Config) error {
+	checker := health.NewChecker("product-service", map[string]health.CheckFunc{
+		"mongodb": func(ctx context.Context) error {
+			client, err := database.NewMongoClient(cfg.MongoDBURI)
+			if err != nil {
+				return err
+			}
+			defer client.Disconnect(ctx)
+			return nil
+		},
+	})
 
-	r.Run(":" + cfg.Port)
+	if !checker.Healthy(context.Background()) {
+		return fmt.Errorf("product-service healthcheck failed")
+	}
+
+	return nil
 }

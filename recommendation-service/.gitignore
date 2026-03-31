@@ -1,0 +1,23 @@
+# Local environment files
+.env
+
+# Virtual environments
+.venv/
+venv/
+
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local model artifacts
+model/
+
+# Runtime files
+*.log
+
+# Editor and OS files
+.idea/
+.vscode/

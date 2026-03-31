@@ -25,7 +25,7 @@ func NewUserRepository(db *mongo.Database) *UserRepository {
 	}
 	_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
 	if err != nil {
-		log.Printf("Error creando índice único en email: %v", err)
+		log.Printf("Failed to create unique email index: %v", err)
 	}
 
 	return &UserRepository{collection: collection}
@@ -51,9 +51,9 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*mo
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, nil // Usuario no encontrado
+			return nil, nil
 		}
-		return nil, err // Otro error
+		return nil, err
 	}
 	return &user, nil
 }
@@ -67,4 +67,22 @@ func (r *UserRepository) FindUserByID(ctx context.Context, id string) (*models.U
 	var user models.User
 	err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
 	return &user, err
+}
+
+func (r *UserRepository) UpdateGoogleIdentity(ctx context.Context, userID primitive.ObjectID, subject string, name string) (*models.User, error) {
+	update := bson.M{
+		"$set": bson.M{
+			"auth_provider": models.AuthProviderGoogle,
+			"oauth_subject": subject,
+			"name":          name,
+		},
+	}
+
+	options := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var user models.User
+	if err := r.collection.FindOneAndUpdate(ctx, bson.M{"_id": userID}, update, options).Decode(&user); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

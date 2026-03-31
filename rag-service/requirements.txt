@@ -1,0 +1,12 @@
+flask==3.0.2
+gunicorn==21.2.0
+gevent==24.2.1
+pymongo==4.6.1
+python-dotenv==1.0.1
+langchain==0.3.25
+langchain-core==0.3.59
+langchain-community==0.3.24
+langchain-chroma==0.2.3
+langchain-openai==0.3.16
+chromadb==0.5.23
+fastembed==0.3.6

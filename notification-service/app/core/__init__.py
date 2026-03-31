@@ -1,0 +1,1 @@
+"""Core configuration and logging utilities for notification-service."""

@@ -61,9 +61,12 @@ func (r *ProductRepository) GetAllProducts(ctx context.Context, categoryID strin
 }
 
 func (r *ProductRepository) GetProductByID(ctx context.Context, id string) (*models.Product, error) {
-	objID, _ := primitive.ObjectIDFromHex(id)
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
 	var product models.Product
-	err := r.productsColl.FindOne(ctx, bson.M{"_id": objID}).Decode(&product)
+	err = r.productsColl.FindOne(ctx, bson.M{"_id": objID}).Decode(&product)
 	return &product, err
 }
 
@@ -78,8 +81,14 @@ func (r *ProductRepository) UpdateProduct(ctx context.Context, id primitive.Obje
 		},
 	}
 
-	_, err := r.productsColl.UpdateByID(ctx, id, update)
-	return err
+	result, err := r.productsColl.UpdateByID(ctx, id, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }
 
 func (r *ProductRepository) DeleteProduct(ctx context.Context, id primitive.ObjectID) error {
@@ -89,7 +98,7 @@ func (r *ProductRepository) DeleteProduct(ctx context.Context, id primitive.Obje
 	}
 
 	if result.DeletedCount == 0 {
-		return err
+		return mongo.ErrNoDocuments
 	}
 
 	return nil

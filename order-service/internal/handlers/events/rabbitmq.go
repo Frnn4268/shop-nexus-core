@@ -13,9 +13,19 @@ type EventPublisher struct {
 	conn *amqp.Connection
 }
 
-// NewEventPublisher crea una nueva instancia del publicador
+const (
+	orderCreatedExchange = "order_created"
+	orderCreatedQueue    = "order_created"
+	orderCreatedKey      = "order_created"
+)
+
+// NewEventPublisher creates a new publisher instance.
 func NewEventPublisher(uri string) (*EventPublisher, error) {
-	maxRetries := 10 // Aumentar reintentos
+	if uri == "" {
+		return nil, fmt.Errorf("rabbitmq uri is empty")
+	}
+
+	maxRetries := 10
 	var conn *amqp.Connection
 	var err error
 
@@ -24,45 +34,53 @@ func NewEventPublisher(uri string) (*EventPublisher, error) {
 		if err == nil {
 			return &EventPublisher{conn: conn}, nil
 		}
-		log.Printf("Intento %d/%d fallido. Esperando 5 segundos...", i+1, maxRetries)
+		log.Printf("RabbitMQ connection attempt %d/%d failed. Retrying in 5 seconds.", i+1, maxRetries)
 		time.Sleep(5 * time.Second)
 	}
 
-	return nil, fmt.Errorf("no se pudo conectar después de %d intentos: %v", maxRetries, err)
+	return nil, fmt.Errorf("failed to connect after %d attempts: %w", maxRetries, err)
+}
+
+func (p *EventPublisher) ensureTopology(ch *amqp.Channel) error {
+	if err := ch.ExchangeDeclare(orderCreatedExchange, "direct", true, false, false, false, nil); err != nil {
+		return err
+	}
+
+	if _, err := ch.QueueDeclare(orderCreatedQueue, true, false, false, false, amqp.Table{
+		"x-message-ttl": int32(86400000),
+		"x-queue-type":  "classic",
+	}); err != nil {
+		return err
+	}
+
+	return ch.QueueBind(orderCreatedQueue, orderCreatedKey, orderCreatedExchange, false, nil)
 }
 
 func (p *EventPublisher) PublishOrderCreated(order interface{}) error {
+	if p == nil || p.conn == nil {
+		return fmt.Errorf("rabbitmq publisher is not initialized")
+	}
+
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return err
 	}
 	defer ch.Close()
 
+	if err := p.ensureTopology(ch); err != nil {
+		return err
+	}
+
 	body, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}
 
-	err = ch.Publish(
-		"order_created", // exchange
-		"order_created", // routing key
-		false,           // mandatory
-		false,           // immediate
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "application/json",
-			Body:         body,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
 	return ch.Publish(
-		"",
-		"order_created",
-		false,
-		false,
+		orderCreatedExchange,
+		orderCreatedKey,
+		false, // mandatory
+		false, // immediate
 		amqp.Publishing{
 			DeliveryMode: amqp.Persistent,
 			ContentType:  "application/json",

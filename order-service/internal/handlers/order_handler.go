@@ -1,33 +1,51 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"log"
 	"net/http"
 	"order-service/internal/handlers/events"
 	"order-service/internal/models"
 	"order-service/internal/repository"
 	"order-service/internal/services/payment"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"github.com/streadway/amqp"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type orderStore interface {
+	CreateOrder(ctx context.Context, order *models.Order) error
+	GetAllOrders(ctx context.Context) ([]models.Order, error)
+	GetOrderByID(ctx context.Context, id string) (*models.Order, error)
+}
+
+type paymentProcessor interface {
+	Process(amount float64) payment.Response
+}
+
+type orderEventPublisher interface {
+	PublishOrderCreated(order interface{}) error
+}
+
 type OrderHandler struct {
-	repo           *repository.OrderRepository
-	paymentService *payment.Processor
-	eventPublisher *events.EventPublisher
+	repo           orderStore
+	paymentService paymentProcessor
+	eventPublisher orderEventPublisher
 }
 
 func NewOrderHandler(
 	repo *repository.OrderRepository,
 	paymentService *payment.Processor,
 	eventPublisher *events.EventPublisher,
+) *OrderHandler {
+	return NewOrderHandlerWithDependencies(repo, paymentService, eventPublisher)
+}
+
+func NewOrderHandlerWithDependencies(
+	repo orderStore,
+	paymentService paymentProcessor,
+	eventPublisher orderEventPublisher,
 ) *OrderHandler {
 	return &OrderHandler{
 		repo:           repo,
@@ -56,7 +74,13 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	userID, err := primitive.ObjectIDFromHex(claimsMap["user_id"].(string))
+	userIDValue, ok := claimsMap["user_id"].(string)
+	if !ok || userIDValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID in token"})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDValue)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID in token"})
 		return
@@ -85,83 +109,17 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Código RabbitMQ (se mantiene sin cambios)
-	rabbitmqURI := os.Getenv("RABBITMQ_URI")
-	if rabbitmqURI == "" {
-		log.Println("RabbitMQ URI no está configurada")
-		c.JSON(http.StatusCreated, order)
-		return
-	}
+	requestID := c.GetString("requestID")
+	publishedEvent := events.NewOrderCreatedEvent(order, requestID)
 
-	if !strings.HasPrefix(rabbitmqURI, "amqp://") && !strings.HasPrefix(rabbitmqURI, "amqps://") {
-		log.Printf("URI de RabbitMQ inválida: %s", rabbitmqURI)
-		c.JSON(http.StatusCreated, order)
-		return
-	}
-
-	// Intentar conexión con reintentos
-	var conn *amqp.Connection
-	maxRetries := 3
-	for i := 0; i < maxRetries; i++ {
-		conn, err = amqp.Dial(rabbitmqURI)
-		if err == nil {
-			break
+	if h.eventPublisher != nil {
+		if err := h.eventPublisher.PublishOrderCreated(publishedEvent); err != nil {
+			log.Printf("Failed to publish order.created event for order %s with request ID %s: %v", order.ID.Hex(), requestID, err)
+		} else {
+			log.Printf("Published order.created event for order %s with request ID %s", order.ID.Hex(), requestID)
 		}
-		log.Printf("Intento %d/%d: Error conectando a RabbitMQ: %v", i+1, maxRetries, err)
-		time.Sleep(2 * time.Second)
-	}
-
-	if err != nil {
-		log.Printf("Error final conectando a RabbitMQ: %v", err)
-		c.JSON(http.StatusCreated, order)
-		return
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Printf("Error abriendo canal: %v", err)
-		c.JSON(http.StatusCreated, order)
-		return
-	}
-	defer ch.Close()
-
-	// Declarar la cola para asegurar su existencia
-	_, err = ch.QueueDeclare(
-		"order_created", // nombre
-		true,            // durable
-		false,           // autoDelete
-		false,           // exclusive
-		false,           // noWait
-		amqp.Table{
-			"x-message-ttl": int64(86400000),
-			"x-queue-type":  "classic",
-			"durable":       true,
-		},
-	)
-	if err != nil {
-		log.Printf("Error declarando cola: %v", err)
-		c.JSON(http.StatusCreated, order)
-		return
-	}
-
-	body, _ := json.Marshal(order)
-	err = ch.Publish(
-		"order_created", // exchange
-		"order_created", // routing key
-		false,           // mandatory
-		false,           // immediate
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent, // Mensaje persistente
-			ContentType:  "application/json",
-			Body:         body,
-		},
-	)
-
-	if err != nil {
-		log.Printf("Error publicando mensaje: %v", err)
 	} else {
-		log.Println("Evento order_created publicado exitosamente")
+		log.Printf("RabbitMQ publisher unavailable, skipping order.created event for order %s with request ID %s", order.ID.Hex(), requestID)
 	}
 
 	c.JSON(http.StatusCreated, order)

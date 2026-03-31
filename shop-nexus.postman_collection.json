@@ -1,299 +1,598 @@
 {
-    "info": {
-      "name": "Shop Nexus API Collection",
-      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-    },
-    "item": [
-      {
-        "name": "Auth Service",
-        "item": [
-          {
-            "name": "Register User",
-            "request": {
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone_number\": \"+1234567890\",\n    \"password\": \"secret123\",\n    \"roles\": [\"admin\"]\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/auth/register",
-                "host": ["{{base_url}}"],
-                "path": ["auth", "register"]
-              }
-            }
-          },
-          {
-            "name": "Login User",
-            "request": {
-              "method": "POST",
-              "header": [],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"email\": \"john@example.com\",\n    \"password\": \"secret123\"\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/auth/login",
-                "host": ["{{base_url}}"],
-                "path": ["auth", "login"]
-              }
-            }
-          }
-        ]
-      },
-      {
-        "name": "Product Service",
-        "item": [
-          {
-            "name": "Create Product",
-            "request": {
-              "method": "POST",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"name\": \"Laptop Gamer\",\n    \"description\": \"RTX 4080, 32GB RAM\",\n    \"price\": 1500.99,\n    \"category_ids\": [\"65f7b1f6243d164587a3d4a2\"]\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/products",
-                "host": ["{{base_url}}"],
-                "path": ["products"]
-              }
-            }
-          },
-          {
-            "name": "Get All Products",
-            "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "url": {
-                "raw": "{{base_url}}/products",
-                "host": ["{{base_url}}"],
-                "path": ["products"]
-              }
-            }
-          },
-          {
-            "name": "Update Product",
-            "request": {
-              "method": "PUT",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"name\": \"Laptop Gamer Actualizada\",\n    \"description\": \"RTX 4090, 64GB RAM\",\n    \"price\": 2500.99,\n    \"category_ids\": [\"65f7b1f6243d164587a3d4a2\"]\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/products/{{product_id}}",
-                "host": ["{{base_url}}"],
-                "path": ["products", "{{product_id}}"]
-              }
-            }
-          },
-          {
-            "name": "Delete Product",
-            "request": {
-              "method": "DELETE",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "url": {
-                "raw": "{{base_url}}/products/{{product_id}}",
-                "host": ["{{base_url}}"],
-                "path": ["products", "{{product_id}}"]
-              }
-            }
-          },
-          {
-            "name": "Get Products by Category",
-            "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "url": {
-                "raw": "{{base_url}}/products?category=65f7b1f6243d164587a3d4a2",
-                "host": ["{{base_url}}"],
-                "path": ["products"],
-                "query": [
-                  {
-                    "key": "category",
-                    "value": "65f7b1f6243d164587a3d4a2"
-                  }
+  "info": {
+    "name": "Shop Nexus Core API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Manual end-to-end collection for Shop Nexus Core microservices. It covers health checks, auth, catalog, orders, recommendations, notification health, and RAG endpoints."
+  },
+  "item": [
+    {
+      "name": "System Flow",
+      "description": "Run these requests in order to exercise the main happy path across the microservices.",
+      "item": [
+        {
+          "name": "1. Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.id) { pm.collectionVariables.set('user_id', payload.id); }"
                 ]
               }
             }
-          },
-          {
-            "name": "Create Category",
-            "request": {
-              "method": "POST",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone_number\": \"+1234567890\",\n  \"password\": \"secret123\",\n  \"roles\": [\"user\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"name\": \"Electrónicos\"\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/categories",
-                "host": ["{{base_url}}"],
-                "path": ["categories"]
               }
+            },
+            "url": {
+              "raw": "{{auth_base_url}}/auth/register",
+              "host": ["{{auth_base_url}}"],
+              "path": ["auth", "register"]
             }
           }
-        ]
-      },
-      {
-        "name": "Order Service",
-        "item": [
-          {
-            "name": "Create Order",
-            "request": {
-              "method": "POST",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n    \"items\": [\n        {\n            \"product_id\": \"65f7b3d6243d164587a3d4a3\",\n            \"quantity\": 2,\n            \"price\": 99.99\n        }\n    ]\n}",
-                "options": {
-                  "raw": {
-                    "language": "json"
-                  }
-                }
-              },
-              "url": {
-                "raw": "{{base_url}}/orders",
-                "host": ["{{base_url}}"],
-                "path": ["orders"]
+        },
+        {
+          "name": "2. Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.token) { pm.collectionVariables.set('jwt_token', payload.token); }"
+                ]
               }
             }
-          },
-          {
-            "name": "Get All Orders",
-            "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ],
-              "url": {
-                "raw": "{{base_url}}/orders",
-                "host": ["{{base_url}}"],
-                "path": ["orders"]
               }
-            }
-          },
-          {
-            "name": "Get Order by ID",
-            "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Authorization",
-                  "value": "Bearer {{jwt_token}}"
-                }
-              ],
-              "url": {
-                "raw": "{{base_url}}/orders/{{order_id}}",
-                "host": ["{{base_url}}"],
-                "path": ["orders", "{{order_id}}"]
-              }
+            },
+            "url": {
+              "raw": "{{auth_base_url}}/auth/login",
+              "host": ["{{auth_base_url}}"],
+              "path": ["auth", "login"]
             }
           }
-        ]
-      },
-      {
-        "name": "Recommendation Service",
-        "item": [
-          {
-            "name": "Get Recommendations",
-            "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "X-API-Key",
-                  "value": "{{api_key}}"
-                }
-              ],
-              "url": {
-                "raw": "{{base_url}}/recommendations/507f1f77bcf86cd799439011",
-                "host": ["{{base_url}}"],
-                "path": ["recommendations", "507f1f77bcf86cd799439011"]
+        },
+        {
+          "name": "3. Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.id) { pm.collectionVariables.set('category_id', payload.id); }"
+                ]
               }
             }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{product_base_url}}/categories",
+              "host": ["{{product_base_url}}"],
+              "path": ["categories"]
+            }
           }
-        ]
-      }
-    ],
-    "variable": [
-      {
-        "key": "base_url",
-        "value": "http://localhost:8000",
-        "type": "string"
-      },
-      {
-        "key": "jwt_token",
-        "value": "TU_TOKEN_JWT_AQUI",
-        "type": "string"
-      },
-      {
-        "key": "api_key",
-        "value": "clave_maestra",
-        "type": "string"
-      }
-    ]
-  }
+        },
+        {
+          "name": "4. Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.id) { pm.collectionVariables.set('product_id', payload.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gaming Laptop\",\n  \"description\": \"RTX 4080, 32GB RAM\",\n  \"price\": 1500.99,\n  \"category_ids\": [\"{{category_id}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{product_base_url}}/products",
+              "host": ["{{product_base_url}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "5. Create Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.ID) { pm.collectionVariables.set('order_id', payload.ID); }",
+                  "if (payload.UserID) { pm.collectionVariables.set('user_id', payload.UserID); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"product_id\": \"{{product_id}}\",\n      \"quantity\": 2,\n      \"price\": 1500.99\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{order_base_url}}/orders",
+              "host": ["{{order_base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "6. Train Recommendation Model",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "if (payload.artifact_id) { pm.collectionVariables.set('artifact_id', payload.artifact_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{recommendation_base_url}}/recommendations/train",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["recommendations", "train"]
+            }
+          }
+        },
+        {
+          "name": "7. Get Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{recommendation_base_url}}/recommendations/{{user_id}}?limit=5",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["recommendations", "{{user_id}}"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Index Catalog for RAG",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{rag_base_url}}/catalog/index",
+              "host": ["{{rag_base_url}}"],
+              "path": ["catalog", "index"]
+            }
+          }
+        },
+        {
+          "name": "9. Query RAG",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Which products are good for gaming?\",\n  \"top_k\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{rag_base_url}}/rag/query",
+              "host": ["{{rag_base_url}}"],
+              "path": ["rag", "query"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/health",
+              "host": ["{{auth_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Google Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_base_url}}/auth/google",
+              "host": ["{{auth_base_url}}"],
+              "path": ["auth", "google"]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/users/{{user_id}}",
+              "host": ["{{auth_base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{product_base_url}}/health",
+              "host": ["{{product_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{product_base_url}}/products",
+              "host": ["{{product_base_url}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "Get Product By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{product_base_url}}/products/{{product_id}}",
+              "host": ["{{product_base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gaming Laptop Pro\",\n  \"description\": \"RTX 4090, 64GB RAM\",\n  \"price\": 2500.99,\n  \"category_ids\": [\"{{category_id}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{product_base_url}}/products/{{product_id}}",
+              "host": ["{{product_base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{product_base_url}}/products/{{product_id}}",
+              "host": ["{{product_base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{product_base_url}}/categories",
+              "host": ["{{product_base_url}}"],
+              "path": ["categories"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Order Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_base_url}}/health",
+              "host": ["{{order_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{order_base_url}}/orders",
+              "host": ["{{order_base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{order_base_url}}/orders/{{order_id}}",
+              "host": ["{{order_base_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recommendation Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{recommendation_base_url}}/health",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Evaluation",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{recommendation_base_url}}/recommendations/evaluation",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["recommendations", "evaluation"]
+            }
+          }
+        },
+        {
+          "name": "List Artifacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "url": {
+              "raw": "{{recommendation_base_url}}/recommendations/artifacts",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["recommendations", "artifacts"]
+            }
+          }
+        },
+        {
+          "name": "Rollback Artifact",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{request_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"artifact_id\": \"{{artifact_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{recommendation_base_url}}/recommendations/rollback",
+              "host": ["{{recommendation_base_url}}"],
+              "path": ["recommendations", "rollback"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notification_base_url}}/health",
+              "host": ["{{notification_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "RAG Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{rag_base_url}}/health",
+              "host": ["{{rag_base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "auth_base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "product_base_url", "value": "http://localhost:8001", "type": "string" },
+    { "key": "order_base_url", "value": "http://localhost:8002", "type": "string" },
+    { "key": "recommendation_base_url", "value": "http://localhost:8003", "type": "string" },
+    { "key": "notification_base_url", "value": "http://localhost:8004", "type": "string" },
+    { "key": "rag_base_url", "value": "http://localhost:8005", "type": "string" },
+    { "key": "request_id", "value": "shop-nexus-manual-run-001", "type": "string" },
+    { "key": "jwt_token", "value": "", "type": "string" },
+    { "key": "google_id_token", "value": "", "type": "string" },
+    { "key": "user_id", "value": "", "type": "string" },
+    { "key": "category_id", "value": "", "type": "string" },
+    { "key": "product_id", "value": "", "type": "string" },
+    { "key": "order_id", "value": "", "type": "string" },
+    { "key": "artifact_id", "value": "", "type": "string" }
+  ]
+}

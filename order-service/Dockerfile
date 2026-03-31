@@ -1,9 +1,9 @@
 # Build stage
-FROM golang:1.24.2-alpine3.21 AS builder
+FROM golang:1.24-alpine3.22 AS builder
 
 WORKDIR /app
 
-# Instalar dependencias de compilación
+# Install build dependencies.
 RUN apk add --no-cache git ca-certificates
 
 COPY go.mod go.sum ./
@@ -11,17 +11,19 @@ RUN go mod download
 
 COPY . .
 
-# Compilar
+# Build the service binary.
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /order-service ./cmd/main.go
 
-# Runtime stage (imagen mínima)
-FROM alpine:3.21
+# Runtime stage.
+FROM gcr.io/distroless/static-debian12
 
 WORKDIR /
-COPY --from=builder /order-service .
+COPY --from=builder /order-service /order-service
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8002
 
-# Comando directo sin wait-for.sh
-CMD ["./order-service"]
+USER nonroot:nonroot
+
+# Start the service directly.
+CMD ["/order-service"]

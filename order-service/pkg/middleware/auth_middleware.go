@@ -11,23 +11,23 @@ import (
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtener el encabezado y extraer el token
+		// Read the authorization header and extract the bearer token.
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			return
 		}
 
-		// Dividir "Bearer <token>"
+		// Split the expected Bearer token format.
 		tokenParts := strings.Split(authHeader, " ")
 		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format. Use Bearer <token>"})
 			return
 		}
 
-		// Parsear el token
+		// Parse the token.
 		token, err := jwt.Parse(tokenParts[1], func(token *jwt.Token) (interface{}, error) {
-			// Validar el método de firma
+			// Validate the signing method.
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}

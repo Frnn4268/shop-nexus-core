@@ -1,11 +1,19 @@
-from celery import Celery
+import logging
 import time
-import os
+
+from celery import Celery
+
+from app.core.config import settings
+from app.core.logging_config import configure_logging
+
+
+LOGGER = logging.getLogger(__name__)
+configure_logging()
 
 celery = Celery(__name__)
 celery.conf.update(
-    broker_url=os.getenv("CELERY_BROKER_URL"),
-    result_backend=os.getenv("CELERY_RESULT_BACKEND"),
+    broker_url=settings.celery_broker_url,
+    result_backend=settings.celery_result_backend,
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
@@ -23,9 +31,8 @@ celery.conf.update(
 @celery.task(bind=True, max_retries=3)
 def send_email(self, email, subject, message):
     try:
-        # Simular envío
         time.sleep(2)
-        print(f"📧 Email enviado a {email}: {subject} - {message}")
+        LOGGER.info("Email notification sent to %s with subject %s", email, subject)
         return True
     except Exception as e:
         self.retry(exc=e, countdown=30)
@@ -33,9 +40,8 @@ def send_email(self, email, subject, message):
 @celery.task(bind=True, max_retries=3)
 def send_sms(self, phone, message):
     try:
-        # Simular envío
         time.sleep(1)
-        print(f"📱 SMS enviado a {phone}: {message}")
+        LOGGER.info("SMS notification sent to %s", phone)
         return True
     except Exception as e:
         self.retry(exc=e, countdown=15)

@@ -3,27 +3,28 @@ package middleware
 import (
 	"auth-service/internal/models"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Define CustomClaims dentro del mismo paquete
-type CustomClaims struct {
-	UserID string   `json:"user_id"`
-	Roles  []string `json:"roles"`
-	jwt.RegisteredClaims
-}
-
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format. Use Bearer <token>"})
+			return
+		}
+
+		claims := &models.JWTClaims{}
+		token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte(jwtSecret), nil
 		})
 
@@ -32,10 +33,13 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		if claims, ok := token.Claims.(*CustomClaims); ok {
-			c.Set("userID", claims.UserID)
-			c.Set("roles", claims.Roles)
-		}
+		c.Set("claims", jwt.MapClaims{
+			"user_id": claims.UserID,
+			"email":   claims.Email,
+			"roles":   claims.Roles,
+		})
+		c.Set("userID", claims.UserID)
+		c.Set("roles", claims.Roles)
 
 		c.Next()
 	}
